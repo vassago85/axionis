@@ -43,23 +43,17 @@ const audiences = [
   { title: 'Specialist operators', desc: 'Who need control and speed, not complexity and bloat' }
 ]
 
-const packages = [
-  {
-    name: 'Starter',
-    desc: 'For small operators getting started.',
-    items: ['POS + stock control', 'Axionis subdomain', 'Basic invoices', 'Unlimited users', 'Email support']
-  },
-  {
-    name: 'Business',
-    desc: 'For growing businesses that need more.',
-    featured: true,
-    items: ['Everything in Starter', 'Quotes + consignment', 'Custom domain option', 'Reports + CSV exports', 'Branded PDF documents']
-  },
-  {
-    name: 'Managed',
-    desc: 'For businesses that want it all handled.',
-    items: ['Everything in Business', 'Managed email sending', 'Branded sender setup', 'Backups + maintenance', 'Priority support']
-  }
+const included = [
+  'Point of sale with barcode scanning',
+  'Stock control and supplier tracking',
+  'Consignment receiving and returns',
+  'Quotes, invoices, and branded PDFs',
+  'Customer records and pricing rules',
+  'Reports and CSV exports',
+  'Unlimited users and devices',
+  'Your own domain or Axionis subdomain',
+  'Cloud hosting, SSL, and backups',
+  'All software updates included'
 ]
 </script>
 
@@ -86,10 +80,10 @@ const packages = [
 
       <div class="mk-hero__content">
         <img src="/brand/axionis-dark-bg.png" alt="Axionis POS" class="mk-hero__logo" />
-        <p class="mk-hero__tagline">Built for mobility. Designed for real-world operations.</p>
+        <p class="mk-hero__tagline">Simple to use. Built for real-world operations.</p>
         <h1 class="mk-hero__headline">
-          A mobile-first POS, stock and consignment system for businesses that
-          <span class="mk-hero__accent">don't sit behind a desk.</span>
+          Sales, stock, and consignment — intuitive enough to
+          <span class="mk-hero__accent">learn in minutes, not days.</span>
         </h1>
         <div class="mk-hero__actions">
           <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-btn mk-btn--glow">Request Demo</a>
@@ -121,6 +115,7 @@ const packages = [
     <!-- ═══ 2. WHO IT IS FOR ═══ -->
     <section id="audience" class="mk-section" data-animate>
       <h2 class="mk-section-title">Built for operators who move product<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">No training manuals. No consultants. Your team picks it up and starts selling.</p>
       <div class="mk-audience-grid" :class="{ 'mk-visible': isVisible('audience') }">
         <div v-for="(a, i) in audiences" :key="a.title" class="mk-audience-card" :style="{ transitionDelay: `${i * 0.06}s` }">
           <h3 class="mk-audience-card__title">{{ a.title }}</h3>
@@ -132,7 +127,7 @@ const packages = [
     <!-- ═══ 3. CORE FEATURES ═══ -->
     <section id="features" class="mk-section" data-animate>
       <h2 class="mk-section-title">Everything you need to operate<span class="mk-section-title__line" /></h2>
-      <p class="mk-section-sub">From the shop floor to the back office — sales, stock, consignment, quotes, invoices, and reports.</p>
+      <p class="mk-section-sub">Everything is where you'd expect it. Clean screens, clear labels, fast workflows.</p>
       <div class="mk-features-grid">
         <div v-for="(f, i) in features" :key="f.title" class="mk-fcard" :class="{ 'mk-visible': isVisible('features') }" :style="{ transitionDelay: `${i * 0.05}s` }">
           <div class="mk-fcard__icon">
@@ -202,7 +197,7 @@ const packages = [
       <div class="mk-split" :class="{ 'mk-visible': isVisible('mobile') }">
         <div class="mk-split__text">
           <h2 class="mk-split__title">Your business doesn't sit still.<br />Your POS shouldn't either.</h2>
-          <p class="mk-split__desc">Run sales, scan products, check stock and manage consignment from the counter, warehouse, event stand, or tablet.</p>
+          <p class="mk-split__desc">Open the app, scan a product, complete a sale. No menus to memorise, no modes to switch. It just works — from the counter, warehouse, event stand, or tablet.</p>
           <ul class="mk-check-list">
             <li>Tablet-ready touch interface</li>
             <li>Installable as a Progressive Web App</li>
@@ -299,20 +294,31 @@ const packages = [
 
     <!-- ═══ 9. PRICING ═══ -->
     <section id="pricing" class="mk-section" data-animate>
-      <h2 class="mk-section-title">Simple, transparent packages<span class="mk-section-title__line" /></h2>
-      <p class="mk-section-sub">No per-user fees. No transaction charges. No surprises.</p>
-      <div class="mk-pricing-grid" :class="{ 'mk-visible': isVisible('pricing') }">
-        <div v-for="(p, i) in packages" :key="p.name" class="mk-pkg" :class="{ 'mk-pkg--featured': p.featured }" :style="{ transitionDelay: `${i * 0.08}s` }">
-          <div v-if="p.featured" class="mk-pkg__badge">Most popular</div>
-          <h3 class="mk-pkg__name">{{ p.name }}</h3>
-          <p class="mk-pkg__desc">{{ p.desc }}</p>
-          <ul class="mk-pkg__list">
-            <li v-for="item in p.items" :key="item">{{ item }}</li>
-          </ul>
-          <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20-%20Pricing%20Enquiry" class="mk-btn" :class="p.featured ? 'mk-btn--glow' : 'mk-btn--ghost'">
-            Request Pricing
-          </a>
+      <h2 class="mk-section-title">Simple, transparent pricing<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">One plan. Everything included. No per-user fees. No transaction charges.</p>
+      <div class="mk-price-row" :class="{ 'mk-visible': isVisible('pricing') }">
+        <div class="mk-price-box">
+          <div class="mk-price-box__label">Once-off</div>
+          <div class="mk-price-box__amount">R 3,500</div>
+          <div class="mk-price-box__period">setup fee</div>
+          <p class="mk-price-box__desc">Full deployment, custom branding, domain setup, staff accounts, and onboarding.</p>
         </div>
+        <div class="mk-price-box mk-price-box--featured">
+          <div class="mk-price-box__badge">Everything included</div>
+          <div class="mk-price-box__label">Monthly</div>
+          <div class="mk-price-box__amount">R 1,000</div>
+          <div class="mk-price-box__period">per month</div>
+          <p class="mk-price-box__desc">Hosting, backups, updates, support, and disaster recovery. Cancel anytime.</p>
+        </div>
+      </div>
+      <div class="mk-included" :class="{ 'mk-visible': isVisible('pricing') }">
+        <h3 class="mk-included__title">Everything is included</h3>
+        <div class="mk-included__grid">
+          <div v-for="item in included" :key="item" class="mk-included__item">{{ item }}</div>
+        </div>
+      </div>
+      <div class="mk-price-cta" :class="{ 'mk-visible': isVisible('pricing') }">
+        <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20-%20Get%20Started" class="mk-btn mk-btn--glow">Get Started</a>
       </div>
     </section>
 
@@ -331,7 +337,7 @@ const packages = [
           <img src="/brand/axionis-icon.png" alt="" class="mk-footer__icon" />
           <div>
             <strong>Axionis POS</strong>
-            <span>Built for mobility. Designed for real-world operations.</span>
+            <span>Simple to use. Built for real-world operations.</span>
           </div>
         </div>
         <div class="mk-footer__links">
@@ -510,19 +516,26 @@ const packages = [
 .mk-hosting-features span { padding:.4rem 1rem;border-radius:20px;background:var(--surface);border:1px solid var(--border);font-size:.8rem;color:var(--text);font-weight:600; }
 
 /* ── PRICING ── */
-.mk-pricing-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
-.mk-pricing-grid.mk-visible { opacity:1;transform:translateY(0); }
-.mk-pkg { position:relative;padding:2.25rem 1.75rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;transition:border-color .3s; }
-.mk-pkg:hover { border-color:rgba(6,182,212,.3); }
-.mk-pkg--featured { border-color:rgba(6,182,212,.5);box-shadow:0 0 50px rgba(6,182,212,.08);background:linear-gradient(180deg,var(--surface-2),var(--surface)); }
-.mk-pkg__badge { position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:.3rem 1.25rem;border-radius:20px;background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap; }
-.mk-pkg__name { font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-hi);margin:0 0 .35rem; }
-.mk-pkg__desc { font-size:.88rem;color:var(--muted);margin:0 0 1.5rem;line-height:1.5; }
-.mk-pkg__list { list-style:none;padding:0;margin:0 0 1.5rem;flex:1; }
-.mk-pkg__list li { padding:.45rem 0 .45rem 1.5rem;font-size:.88rem;color:var(--text);position:relative;border-bottom:1px solid var(--border); }
-.mk-pkg__list li::before { content:'✓';position:absolute;left:0;color:var(--accent);font-weight:700; }
-.mk-pkg__list li:last-child { border-bottom:none; }
-.mk-pkg .mk-btn { width:100%;text-align:center; }
+.mk-price-row { display:grid;grid-template-columns:1fr 1fr;gap:2rem;max-width:700px;margin:0 auto 3rem;align-items:start;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
+.mk-price-row.mk-visible { opacity:1;transform:translateY(0); }
+.mk-price-box { position:relative;padding:2.5rem 2rem;background:var(--surface);border:1px solid var(--border);border-radius:20px;text-align:center; }
+.mk-price-box--featured { border-color:rgba(6,182,212,.5);box-shadow:0 0 50px rgba(6,182,212,.1);background:linear-gradient(180deg,var(--surface-2),var(--surface)); }
+.mk-price-box__badge { position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:.3rem 1.25rem;border-radius:20px;background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap; }
+.mk-price-box__label { font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.5rem; }
+.mk-price-box__amount { font-family:'Barlow Condensed',sans-serif;font-size:3rem;font-weight:700;color:var(--text-hi);line-height:1; }
+.mk-price-box--featured .mk-price-box__amount { color:var(--accent-lt); }
+.mk-price-box__period { font-size:.9rem;color:var(--muted);margin-bottom:1rem; }
+.mk-price-box__desc { font-size:.88rem;color:var(--muted);line-height:1.5;margin:0; }
+
+.mk-included { max-width:700px;margin:0 auto 2rem;opacity:0;transform:translateY(16px);transition:opacity .7s .15s,transform .7s .15s; }
+.mk-included.mk-visible { opacity:1;transform:translateY(0); }
+.mk-included__title { font-family:'Barlow Condensed',sans-serif;font-size:1.15rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-hi);text-align:center;margin:0 0 1.25rem; }
+.mk-included__grid { display:grid;grid-template-columns:1fr 1fr;gap:.1rem; }
+.mk-included__item { padding:.55rem 0 .55rem 1.5rem;font-size:.9rem;color:var(--text);position:relative; }
+.mk-included__item::before { content:'✓';position:absolute;left:0;color:var(--accent);font-weight:700; }
+
+.mk-price-cta { text-align:center;opacity:0;transform:translateY(12px);transition:opacity .7s .25s,transform .7s .25s; }
+.mk-price-cta.mk-visible { opacity:1;transform:translateY(0); }
 
 /* ── CTA ── */
 .mk-cta { position:relative;text-align:center;padding:7rem 2rem;overflow:hidden; }
@@ -547,7 +560,6 @@ const packages = [
 @media(max-width:900px) {
   .mk-split { grid-template-columns:1fr;gap:2rem; }
   .mk-split--reverse { direction:ltr; }
-  .mk-pricing-grid { grid-template-columns:1fr; }
   .mk-hosting-grid { grid-template-columns:1fr; }
   .mk-features-grid { grid-template-columns:repeat(2,1fr); }
 }
@@ -572,5 +584,7 @@ const packages = [
 @media(max-width:600px) {
   .mk-features-grid { grid-template-columns:1fr; }
   .mk-audience-grid { grid-template-columns:1fr; }
+  .mk-price-row { grid-template-columns:1fr; }
+  .mk-included__grid { grid-template-columns:1fr; }
 }
 </style>
