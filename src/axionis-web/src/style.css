@@ -134,6 +134,13 @@ h3,
 
 .layout-public {
   min-height: 100dvh;
+}
+
+.layout-public:has(.mk) {
+  padding: 0;
+}
+
+.layout-public:not(:has(.mk)) {
   padding: var(--ax-space-4);
 }
 

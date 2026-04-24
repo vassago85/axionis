@@ -42,6 +42,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: ['**/brand/axionis-dark-bg.png', '**/brand/axionis-light-bg.png', '**/brand/axionis-icon.png'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         skipWaiting: true,
         clientsClaim: true
       }
