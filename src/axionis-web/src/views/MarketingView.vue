@@ -13,7 +13,7 @@ onMounted(() => {
         }
       })
     },
-    { threshold: 0.15 }
+    { threshold: 0.12 }
   )
   document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el))
 })
@@ -23,197 +23,128 @@ function isVisible(id: string) {
 }
 
 const features = [
-  {
-    title: 'Point of Sale',
-    desc: 'Barcode-driven cart with real-time pricing, discounts, customer lookup, and instant invoicing. Designed for speed on any device.',
-    icon: 'pos'
-  },
-  {
-    title: 'Stock Control',
-    desc: 'Full inventory lifecycle — supplier tracking, stock receipts, bulk imports, label printing, and live quantity monitoring.',
-    icon: 'stock'
-  },
-  {
-    title: 'Consignment',
-    desc: 'Receive, reconcile, and return consignment stock against supplier documents with line-level detail and PDF parsing.',
-    icon: 'consignment'
-  },
-  {
-    title: 'Quotes & Invoices',
-    desc: 'Create professional quotes, convert to invoices, email PDF attachments, and track everything from one place.',
-    icon: 'quotes'
-  },
-  {
-    title: 'Reports & Analytics',
-    desc: 'Revenue, margins, vendor performance, daily sales, payment breakdowns — filterable by date, supplier, or user.',
-    icon: 'reports'
-  },
-  {
-    title: 'PWA & Mobile-First',
-    desc: 'Install on any device as a Progressive Web App. Touch-optimized for tablets and phones with offline-ready design.',
-    icon: 'pwa'
-  }
+  { title: 'Fast POS Terminal', desc: 'Barcode-driven cart with real-time pricing, discounts, customer lookup, and instant invoicing. Built for speed.', icon: 'pos' },
+  { title: 'Barcode Scanning', desc: 'Scan with a hardware reader or the built-in camera scanner. Works on tablets, phones, and desktops.', icon: 'scan' },
+  { title: 'Stock Control', desc: 'Full inventory lifecycle — supplier tracking, stock receipts, bulk imports, label printing, and live quantities.', icon: 'stock' },
+  { title: 'Consignment', desc: 'Receive, reconcile, and return consignment stock against supplier documents with line-level detail.', icon: 'consignment' },
+  { title: 'Quotes & Invoices', desc: 'Create quotes, convert to invoices, email branded PDFs, and keep customer details attached to every sale.', icon: 'quotes' },
+  { title: 'Customer Records', desc: 'Store customer details, company info, VAT numbers, and link them to invoices and quotes automatically.', icon: 'customers' },
+  { title: 'Promotions & Pricing', desc: 'Set pricing rules, markup methods, product specials, and promotional pricing across your catalogue.', icon: 'pricing' },
+  { title: 'Reports & Exports', desc: 'Revenue, margins, vendor performance, daily sales, payment breakdowns — filterable and exportable.', icon: 'reports' },
+  { title: 'Branded PDFs', desc: 'Invoices, quotes, consignment checklists, and labels — all generated with your business branding.', icon: 'pdf' },
+  { title: 'Tablet & PWA Ready', desc: 'Install as a Progressive Web App on any device. Touch-first design for tablets, phones, and desktops.', icon: 'pwa' }
 ]
 
-const stats = [
-  { value: '< 2s', label: 'Average checkout' },
-  { value: '100%', label: 'Cloud hosted' },
-  { value: 'R1,000', label: 'Per month' },
-  { value: '∞', label: 'Users & devices' }
+const audiences = [
+  { title: 'Retail shops', desc: 'With active stock movement and supplier relationships' },
+  { title: 'Consignment businesses', desc: 'That need to track supplier stock separately from owned stock' },
+  { title: 'Event & mobile sellers', desc: 'Operating from tablets at markets, expos, and pop-ups' },
+  { title: 'Warehouses & dispatch', desc: 'Managing receiving, stock counts, and outbound orders' },
+  { title: 'Specialist operators', desc: 'Who need control and speed, not complexity and bloat' }
+]
+
+const packages = [
+  {
+    name: 'Starter',
+    desc: 'For small operators getting started.',
+    items: ['POS + stock control', 'Axionis subdomain', 'Basic invoices', 'Unlimited users', 'Email support']
+  },
+  {
+    name: 'Business',
+    desc: 'For growing businesses that need more.',
+    featured: true,
+    items: ['Everything in Starter', 'Quotes + consignment', 'Custom domain option', 'Reports + CSV exports', 'Branded PDF documents']
+  },
+  {
+    name: 'Managed',
+    desc: 'For businesses that want it all handled.',
+    items: ['Everything in Business', 'Managed email sending', 'Branded sender setup', 'Backups + maintenance', 'Priority support']
+  }
 ]
 </script>
 
 <template>
   <div class="mk">
-    <!-- ─── Nav ─── -->
+    <!-- ═══ NAV ═══ -->
     <nav class="mk-nav">
       <div class="mk-nav__inner">
         <img src="/brand/axionis-icon.png" alt="Axionis" class="mk-nav__icon" />
         <span class="mk-nav__wordmark">AXIONIS</span>
         <div class="mk-nav__spacer" />
-        <router-link to="/login" class="mk-nav__link">Features</router-link>
-        <router-link to="/login" class="mk-nav__link">Preview</router-link>
-        <router-link to="/login" class="mk-nav__link mk-nav__link--hide-mobile">Pricing</router-link>
+        <a href="#features" class="mk-nav__link">Features</a>
+        <a href="#pricing" class="mk-nav__link">Pricing</a>
+        <a href="#preview" class="mk-nav__link mk-hide-mobile">Preview</a>
         <router-link to="/login" class="mk-nav__cta">Sign In</router-link>
       </div>
     </nav>
 
-    <!-- ─── Hero ─── -->
+    <!-- ═══ 1. HERO ═══ -->
     <section class="mk-hero">
-      <div class="mk-hero__bg-grid" />
+      <div class="mk-hero__grid-bg" />
       <div class="mk-hero__glow" />
       <div class="mk-hero__glow mk-hero__glow--2" />
+
       <div class="mk-hero__content">
         <img src="/brand/axionis-dark-bg.png" alt="Axionis POS" class="mk-hero__logo" />
+        <p class="mk-hero__tagline">Built for mobility. Designed for real-world operations.</p>
         <h1 class="mk-hero__headline">
-          The POS system built for
-          <span class="mk-hero__accent">real-world operations</span>
+          A mobile-first POS, stock and consignment system for businesses that
+          <span class="mk-hero__accent">don't sit behind a desk.</span>
         </h1>
-        <p class="mk-hero__sub">
-          Mobile-first point of sale, stock management, consignment tracking, and business intelligence —
-          fully hosted and managed for you.
-        </p>
         <div class="mk-hero__actions">
-          <a
-            href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request"
-            class="mk-btn mk-btn--glow"
-          >
-            Request a Demo
-          </a>
-          <router-link to="/login" class="mk-btn mk-btn--ghost">Sign In</router-link>
+          <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-btn mk-btn--glow">Request Demo</a>
+          <a href="#features" class="mk-btn mk-btn--ghost">View Features</a>
         </div>
       </div>
 
-      <!-- Floating stats -->
-      <div class="mk-hero__stats">
-        <div v-for="s in stats" :key="s.label" class="mk-stat">
-          <span class="mk-stat__value">{{ s.value }}</span>
-          <span class="mk-stat__label">{{ s.label }}</span>
+      <!-- Hero indicators -->
+      <div class="mk-hero__indicators">
+        <div class="mk-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <span>Fast POS</span>
         </div>
-      </div>
-    </section>
-
-    <!-- ─── App Preview ─── -->
-    <section id="preview" class="mk-preview" data-animate>
-      <h2 class="mk-section-title">
-        See it in action
-        <span class="mk-section-title__line" />
-      </h2>
-      <p class="mk-section-sub">A complete business operations platform, not just a cash register.</p>
-
-      <div class="mk-browser" :class="{ 'mk-visible': isVisible('preview') }">
-        <div class="mk-browser__bar">
-          <span class="mk-browser__dot" />
-          <span class="mk-browser__dot mk-browser__dot--yellow" />
-          <span class="mk-browser__dot mk-browser__dot--green" />
-          <span class="mk-browser__url">axionis.co.za/#/pos</span>
+        <div class="mk-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/></svg>
+          <span>Stock Control</span>
         </div>
-        <div class="mk-browser__body">
-          <!-- Sidebar mockup -->
-          <div class="mk-mock-sidebar">
-            <div class="mk-mock-sidebar__brand">
-              <img src="/brand/axionis-icon.png" alt="" class="mk-mock-sidebar__logo" />
-              <span>AXIONIS</span>
-            </div>
-            <div class="mk-mock-sidebar__label">SELL</div>
-            <div class="mk-mock-sidebar__item mk-mock-sidebar__item--active">⌘ Point of Sale</div>
-            <div class="mk-mock-sidebar__item">✎ Quotes</div>
-            <div class="mk-mock-sidebar__item">⊙ Price Lookup</div>
-            <div class="mk-mock-sidebar__label">INVENTORY</div>
-            <div class="mk-mock-sidebar__item">☰ Stock List</div>
-            <div class="mk-mock-sidebar__item">⊞ Print Labels</div>
-            <div class="mk-mock-sidebar__item">↔ Stock Batches</div>
-            <div class="mk-mock-sidebar__label">OFFICE</div>
-            <div class="mk-mock-sidebar__item">▦ Reports</div>
-            <div class="mk-mock-sidebar__item">⚙ Settings</div>
-          </div>
-          <!-- POS mockup -->
-          <div class="mk-mock-main">
-            <div class="mk-mock-topbar">
-              <span class="mk-mock-topbar__title">Point of Sale</span>
-              <span class="mk-mock-topbar__badge">Manager Mode</span>
-            </div>
-            <div class="mk-mock-search">
-              <span class="mk-mock-search__icon">⌕</span>
-              <span class="mk-mock-search__text">Scan barcode, or type SKU / name…</span>
-            </div>
-            <div class="mk-mock-cart">
-              <div class="mk-mock-cart__header">
-                <span>Item</span><span>Qty</span><span>Price</span><span>Total</span>
-              </div>
-              <div class="mk-mock-cart__row">
-                <span>Shimano Deore XT M8100</span><span>2</span><span>R 1,450.00</span><span>R 2,900.00</span>
-              </div>
-              <div class="mk-mock-cart__row">
-                <span>Maxxis Minion DHF 27.5</span><span>1</span><span>R 890.00</span><span>R 890.00</span>
-              </div>
-              <div class="mk-mock-cart__row">
-                <span>Fox 36 Float GRIP2 Fork</span><span>1</span><span>R 18,500.00</span><span>R 18,500.00</span>
-              </div>
-              <div class="mk-mock-cart__row mk-mock-cart__row--highlight">
-                <span>RockShox Reverb AXS Dropper</span><span>1</span><span>R 12,200.00</span><span>R 12,200.00</span>
-              </div>
-            </div>
-            <div class="mk-mock-totals">
-              <div class="mk-mock-totals__line">
-                <span>Subtotal</span><span>R 34,490.00</span>
-              </div>
-              <div class="mk-mock-totals__line mk-mock-totals__line--vat">
-                <span>VAT (15%)</span><span>R 5,173.50</span>
-              </div>
-              <div class="mk-mock-totals__line mk-mock-totals__line--total">
-                <span>Total Due</span><span>R 39,663.50</span>
-              </div>
-              <div class="mk-mock-totals__btn">Complete Sale</div>
-            </div>
-          </div>
+        <div class="mk-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          <span>Quotes & Invoices</span>
+        </div>
+        <div class="mk-indicator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
+          <span>Tablet Ready</span>
         </div>
       </div>
     </section>
 
-    <!-- ─── Features ─── -->
-    <section id="features" class="mk-features" data-animate>
-      <h2 class="mk-section-title">
-        Everything you need to operate
-        <span class="mk-section-title__line" />
-      </h2>
-      <p class="mk-section-sub">
-        From the shop floor to the back office, Axionis covers the full cycle.
-      </p>
-      <div class="mk-features__grid">
-        <div
-          v-for="(f, i) in features"
-          :key="f.title"
-          class="mk-fcard"
-          :class="{ 'mk-visible': isVisible('features') }"
-          :style="{ transitionDelay: `${i * 0.08}s` }"
-        >
-          <div class="mk-fcard__icon" :data-icon="f.icon">
+    <!-- ═══ 2. WHO IT IS FOR ═══ -->
+    <section id="audience" class="mk-section" data-animate>
+      <h2 class="mk-section-title">Built for operators who move product<span class="mk-section-title__line" /></h2>
+      <div class="mk-audience-grid" :class="{ 'mk-visible': isVisible('audience') }">
+        <div v-for="(a, i) in audiences" :key="a.title" class="mk-audience-card" :style="{ transitionDelay: `${i * 0.06}s` }">
+          <h3 class="mk-audience-card__title">{{ a.title }}</h3>
+          <p class="mk-audience-card__desc">{{ a.desc }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 3. CORE FEATURES ═══ -->
+    <section id="features" class="mk-section" data-animate>
+      <h2 class="mk-section-title">Everything you need to operate<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">From the shop floor to the back office — sales, stock, consignment, quotes, invoices, and reports.</p>
+      <div class="mk-features-grid">
+        <div v-for="(f, i) in features" :key="f.title" class="mk-fcard" :class="{ 'mk-visible': isVisible('features') }" :style="{ transitionDelay: `${i * 0.05}s` }">
+          <div class="mk-fcard__icon">
             <svg v-if="f.icon === 'pos'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h2m2 0h2m2 0h2M7 11h10"/></svg>
+            <svg v-if="f.icon === 'scan'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10M7 8h3m4 0h3M7 16h3"/></svg>
             <svg v-if="f.icon === 'stock'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/></svg>
             <svg v-if="f.icon === 'consignment'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M20 21L8 9"/></svg>
             <svg v-if="f.icon === 'quotes'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>
+            <svg v-if="f.icon === 'customers'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <svg v-if="f.icon === 'pricing'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
             <svg v-if="f.icon === 'reports'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            <svg v-if="f.icon === 'pdf'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15v-2h2a1 1 0 1 1 0 2H9z"/></svg>
             <svg v-if="f.icon === 'pwa'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
           </div>
           <h3 class="mk-fcard__title">{{ f.title }}</h3>
@@ -222,1330 +153,424 @@ const stats = [
       </div>
     </section>
 
-    <!-- ─── Secondary Screens ─── -->
-    <section class="mk-screens" id="screens" data-animate>
-      <h2 class="mk-section-title">
-        Built for every department
-        <span class="mk-section-title__line" />
-      </h2>
-
-      <div class="mk-screens__grid" :class="{ 'mk-visible': isVisible('screens') }">
-        <!-- Stock screen -->
-        <div class="mk-screen-card">
-          <div class="mk-screen-card__label">Stock Management</div>
-          <div class="mk-screen-card__mock">
-            <div class="mk-mini-header">
-              <span>Stock List</span>
-              <div class="mk-mini-actions">
-                <span class="mk-mini-btn">+ Add</span>
-                <span class="mk-mini-btn mk-mini-btn--sec">Export</span>
-              </div>
-            </div>
-            <div class="mk-mini-table">
-              <div class="mk-mini-table__head"><span>SKU</span><span>Product</span><span>Qty</span><span>Cost</span><span>Sell</span></div>
-              <div class="mk-mini-table__row"><span>SHM-XT-01</span><span>Shimano XT Derailleur</span><span class="mk-qty-ok">24</span><span>R 980</span><span>R 1,450</span></div>
-              <div class="mk-mini-table__row"><span>MAX-DHF-27</span><span>Maxxis DHF 27.5</span><span class="mk-qty-ok">18</span><span>R 620</span><span>R 890</span></div>
-              <div class="mk-mini-table__row"><span>FOX-36-FRK</span><span>Fox 36 Float Fork</span><span class="mk-qty-low">3</span><span>R 14,200</span><span>R 18,500</span></div>
-              <div class="mk-mini-table__row"><span>RSX-RVB-AX</span><span>RockShox Reverb AXS</span><span class="mk-qty-out">0</span><span>R 9,400</span><span>R 12,200</span></div>
-            </div>
-          </div>
+    <!-- ═══ 4. APP PREVIEW ═══ -->
+    <section id="preview" class="mk-section mk-section--wide" data-animate>
+      <h2 class="mk-section-title">See it in action<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">A complete business operations platform, not just a cash register.</p>
+      <div class="mk-browser" :class="{ 'mk-visible': isVisible('preview') }">
+        <div class="mk-browser__bar">
+          <span class="mk-browser__dot" /><span class="mk-browser__dot mk-browser__dot--y" /><span class="mk-browser__dot mk-browser__dot--g" />
+          <span class="mk-browser__url">axionis.co.za/#/pos</span>
         </div>
-
-        <!-- Reports screen -->
-        <div class="mk-screen-card">
-          <div class="mk-screen-card__label">Reports & Analytics</div>
-          <div class="mk-screen-card__mock">
-            <div class="mk-mini-header">
-              <span>Sales Report</span>
-              <div class="mk-mini-actions">
-                <span class="mk-mini-chip mk-mini-chip--active">7 Days</span>
-                <span class="mk-mini-chip">30 Days</span>
-                <span class="mk-mini-chip">Month</span>
-              </div>
-            </div>
-            <div class="mk-kpi-row">
-              <div class="mk-kpi"><span class="mk-kpi__val">R 487,320</span><span class="mk-kpi__label">Revenue</span></div>
-              <div class="mk-kpi"><span class="mk-kpi__val">R 143,890</span><span class="mk-kpi__label">Gross Profit</span></div>
-              <div class="mk-kpi"><span class="mk-kpi__val">29.5%</span><span class="mk-kpi__label">Margin</span></div>
-              <div class="mk-kpi"><span class="mk-kpi__val">184</span><span class="mk-kpi__label">Invoices</span></div>
-            </div>
-            <div class="mk-chart-bars">
-              <div class="mk-chart-bar" style="--h: 65%"><span>Mon</span></div>
-              <div class="mk-chart-bar" style="--h: 82%"><span>Tue</span></div>
-              <div class="mk-chart-bar" style="--h: 45%"><span>Wed</span></div>
-              <div class="mk-chart-bar" style="--h: 90%"><span>Thu</span></div>
-              <div class="mk-chart-bar" style="--h: 72%"><span>Fri</span></div>
-              <div class="mk-chart-bar" style="--h: 95%"><span>Sat</span></div>
-              <div class="mk-chart-bar" style="--h: 30%"><span>Sun</span></div>
-            </div>
+        <div class="mk-browser__body">
+          <div class="mk-mock-sidebar">
+            <div class="mk-mock-sidebar__brand"><img src="/brand/axionis-icon.png" alt="" class="mk-mock-sidebar__logo" /><span>AXIONIS</span></div>
+            <div class="mk-mock-sidebar__label">SELL</div>
+            <div class="mk-mock-sidebar__item mk-mock-sidebar__item--active">Point of Sale</div>
+            <div class="mk-mock-sidebar__item">Quotes</div>
+            <div class="mk-mock-sidebar__item">Price Lookup</div>
+            <div class="mk-mock-sidebar__label">INVENTORY</div>
+            <div class="mk-mock-sidebar__item">Stock List</div>
+            <div class="mk-mock-sidebar__item">Stock Batches</div>
+            <div class="mk-mock-sidebar__label">OFFICE</div>
+            <div class="mk-mock-sidebar__item">Reports</div>
+            <div class="mk-mock-sidebar__item">Settings</div>
           </div>
-        </div>
-
-        <!-- Quotes screen -->
-        <div class="mk-screen-card">
-          <div class="mk-screen-card__label">Quotes & Invoicing</div>
-          <div class="mk-screen-card__mock">
-            <div class="mk-mini-header">
-              <span>Quotes</span>
-              <div class="mk-mini-actions"><span class="mk-mini-btn">+ New Quote</span></div>
+          <div class="mk-mock-main">
+            <div class="mk-mock-topbar"><span class="mk-mock-topbar__title">Point of Sale</span><span class="mk-mock-badge">Manager Mode</span></div>
+            <div class="mk-mock-search"><span>Scan barcode, or type SKU / name…</span></div>
+            <div class="mk-mock-cart">
+              <div class="mk-mock-cart__head"><span>Item</span><span>Qty</span><span>Price</span><span>Total</span></div>
+              <div class="mk-mock-cart__row"><span>Shimano Deore XT M8100</span><span>2</span><span>R 1,450</span><span>R 2,900</span></div>
+              <div class="mk-mock-cart__row"><span>Maxxis Minion DHF 27.5</span><span>1</span><span>R 890</span><span>R 890</span></div>
+              <div class="mk-mock-cart__row"><span>Fox 36 Float GRIP2 Fork</span><span>1</span><span>R 18,500</span><span>R 18,500</span></div>
+              <div class="mk-mock-cart__row mk-mock-cart__row--hl"><span>RockShox Reverb AXS</span><span>1</span><span>R 12,200</span><span>R 12,200</span></div>
             </div>
-            <div class="mk-mini-table">
-              <div class="mk-mini-table__head"><span>#</span><span>Customer</span><span>Total</span><span>Status</span></div>
-              <div class="mk-mini-table__row"><span>Q-041</span><span>Red Bull Racing</span><span>R 84,200</span><span class="mk-badge mk-badge--sent">Sent</span></div>
-              <div class="mk-mini-table__row"><span>Q-040</span><span>Trail Riders ZA</span><span>R 23,450</span><span class="mk-badge mk-badge--draft">Draft</span></div>
-              <div class="mk-mini-table__row"><span>Q-039</span><span>Pedal Power CC</span><span>R 156,800</span><span class="mk-badge mk-badge--accepted">Accepted</span></div>
-              <div class="mk-mini-table__row"><span>Q-038</span><span>Western Province MTB</span><span>R 41,600</span><span class="mk-badge mk-badge--invoiced">Invoiced</span></div>
+            <div class="mk-mock-footer">
+              <div class="mk-mock-footer__line"><span>Subtotal</span><span>R 34,490.00</span></div>
+              <div class="mk-mock-footer__line mk-mock-footer__line--vat"><span>VAT (15%)</span><span>R 5,173.50</span></div>
+              <div class="mk-mock-footer__line mk-mock-footer__line--total"><span>Total Due</span><span>R 39,663.50</span></div>
+              <div class="mk-mock-footer__btn">Complete Sale</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ─── Pricing ─── -->
-    <section id="pricing" class="mk-pricing" data-animate>
-      <h2 class="mk-section-title">
-        Simple, transparent pricing
-        <span class="mk-section-title__line" />
-      </h2>
-      <p class="mk-section-sub">
-        No per-user fees. No transaction charges. No surprises.
-      </p>
-
-      <div class="mk-pricing__grid" :class="{ 'mk-visible': isVisible('pricing') }">
-        <div class="mk-price-card">
-          <div class="mk-price-card__label">Once-off</div>
-          <div class="mk-price-card__amount">R 3,500</div>
-          <div class="mk-price-card__period">setup fee</div>
-          <ul class="mk-price-card__list">
-            <li>Full system deployment</li>
-            <li>Custom branding & domain</li>
-            <li>Your own isolated database</li>
-            <li>Staff account setup</li>
-            <li>Onboarding & training session</li>
+    <!-- ═══ 5. MOBILE-FIRST ═══ -->
+    <section id="mobile" class="mk-section" data-animate>
+      <div class="mk-split" :class="{ 'mk-visible': isVisible('mobile') }">
+        <div class="mk-split__text">
+          <h2 class="mk-split__title">Your business doesn't sit still.<br />Your POS shouldn't either.</h2>
+          <p class="mk-split__desc">Run sales, scan products, check stock and manage consignment from the counter, warehouse, event stand, or tablet.</p>
+          <ul class="mk-check-list">
+            <li>Tablet-ready touch interface</li>
+            <li>Installable as a Progressive Web App</li>
+            <li>Camera barcode scanning built in</li>
+            <li>Works across desktop, tablet, and mobile</li>
           </ul>
         </div>
-        <div class="mk-price-card mk-price-card--featured">
-          <div class="mk-price-card__badge">Most popular</div>
-          <div class="mk-price-card__label">Monthly</div>
-          <div class="mk-price-card__amount">R 1,000</div>
-          <div class="mk-price-card__period">per month</div>
-          <ul class="mk-price-card__list">
-            <li>Cloud hosting & SSL</li>
-            <li>Automatic backups & recovery</li>
-            <li>All software updates included</li>
-            <li>Unlimited users & devices</li>
-            <li>Email & chat support</li>
-            <li>Disaster recovery guarantee</li>
+        <div class="mk-split__visual">
+          <div class="mk-device">
+            <div class="mk-device__screen">
+              <div class="mk-device__bar">Axionis POS</div>
+              <div class="mk-device__row">Scan barcode…</div>
+              <div class="mk-device__item"><span>Shimano XT</span><span class="mk-device__qty">×2</span><span>R 2,900</span></div>
+              <div class="mk-device__item"><span>Maxxis DHF</span><span class="mk-device__qty">×1</span><span>R 890</span></div>
+              <div class="mk-device__total"><span>Total</span><span>R 3,790</span></div>
+              <div class="mk-device__btn">Complete Sale</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 6. CONSIGNMENT ═══ -->
+    <section id="consignment" class="mk-section" data-animate>
+      <div class="mk-split mk-split--reverse" :class="{ 'mk-visible': isVisible('consignment') }">
+        <div class="mk-split__text">
+          <h2 class="mk-split__title">Built for consignment from day one.</h2>
+          <p class="mk-split__desc">Track supplier stock, received batches, checked quantities, returns, owned stock and consignment stock — without losing control.</p>
+          <ul class="mk-check-list">
+            <li>Supplier-linked stock tracking</li>
+            <li>Batch receiving with expected vs checked quantities</li>
+            <li>Return packing lists and movement history</li>
+            <li>Owned and consignment stock separated</li>
+            <li>PDF import and reconciliation</li>
           </ul>
-          <a
-            href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20-%20Get%20Started"
-            class="mk-btn mk-btn--glow mk-price-card__btn"
-          >
-            Get Started
+        </div>
+        <div class="mk-split__visual">
+          <div class="mk-mini-card">
+            <div class="mk-mini-card__head">Consignment Batch — Draft</div>
+            <div class="mk-mini-card__row"><span>SKU</span><span>Product</span><span>Expected</span><span>Received</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>SHM-01</span><span>Shimano XT</span><span>10</span><span class="mk-text-ok">10</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>FOX-36</span><span>Fox 36 Fork</span><span>5</span><span class="mk-text-warn">3</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>MAX-27</span><span>Maxxis DHF</span><span>20</span><span class="mk-text-ok">20</span></div>
+            <div class="mk-mini-card__bar"><div class="mk-mini-card__bar-fill" style="width:85%"></div></div>
+            <div class="mk-mini-card__foot">85% checked — 2 lines remaining</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 7. QUOTES & INVOICES ═══ -->
+    <section id="quotes" class="mk-section" data-animate>
+      <div class="mk-split" :class="{ 'mk-visible': isVisible('quotes') }">
+        <div class="mk-split__text">
+          <h2 class="mk-split__title">From quote to invoice without the admin mess.</h2>
+          <p class="mk-split__desc">Create quotes, convert accepted quotes to invoices, generate branded PDFs, and keep customer details attached to every sale.</p>
+          <ul class="mk-check-list">
+            <li>Create and email professional quotes</li>
+            <li>One-click convert to invoice</li>
+            <li>Branded PDF generation</li>
+            <li>Customer and company records linked</li>
+          </ul>
+        </div>
+        <div class="mk-split__visual">
+          <div class="mk-mini-card">
+            <div class="mk-mini-card__head">Quotes</div>
+            <div class="mk-mini-card__row"><span>#</span><span>Customer</span><span>Total</span><span>Status</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>Q-041</span><span>Red Bull Racing</span><span>R 84,200</span><span class="mk-pill mk-pill--blue">Sent</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>Q-040</span><span>Trail Riders ZA</span><span>R 23,450</span><span class="mk-pill mk-pill--grey">Draft</span></div>
+            <div class="mk-mini-card__row mk-mini-card__row--data"><span>Q-039</span><span>Pedal Power CC</span><span>R 156,800</span><span class="mk-pill mk-pill--green">Accepted</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 8. DEPLOYMENT ═══ -->
+    <section id="hosting" class="mk-section" data-animate>
+      <h2 class="mk-section-title">Hosted your way<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">Every client gets a fully isolated deployment — own database, own files, own branding, own domain.</p>
+      <div class="mk-hosting-grid" :class="{ 'mk-visible': isVisible('hosting') }">
+        <div class="mk-hosting-card">
+          <div class="mk-hosting-card__domain">clientname.axionis.co.za</div>
+          <p>Axionis subdomain — ready in minutes, no DNS setup needed.</p>
+        </div>
+        <div class="mk-hosting-card">
+          <div class="mk-hosting-card__domain">pos.yourbusiness.co.za</div>
+          <p>Custom domain — your own brand front and centre.</p>
+        </div>
+      </div>
+      <div class="mk-hosting-features" :class="{ 'mk-visible': isVisible('hosting') }">
+        <span>Isolated database</span><span>Own file storage</span><span>Custom branding</span><span>SSL included</span><span>Optional managed email</span>
+      </div>
+    </section>
+
+    <!-- ═══ 9. PRICING ═══ -->
+    <section id="pricing" class="mk-section" data-animate>
+      <h2 class="mk-section-title">Simple, transparent packages<span class="mk-section-title__line" /></h2>
+      <p class="mk-section-sub">No per-user fees. No transaction charges. No surprises.</p>
+      <div class="mk-pricing-grid" :class="{ 'mk-visible': isVisible('pricing') }">
+        <div v-for="(p, i) in packages" :key="p.name" class="mk-pkg" :class="{ 'mk-pkg--featured': p.featured }" :style="{ transitionDelay: `${i * 0.08}s` }">
+          <div v-if="p.featured" class="mk-pkg__badge">Most popular</div>
+          <h3 class="mk-pkg__name">{{ p.name }}</h3>
+          <p class="mk-pkg__desc">{{ p.desc }}</p>
+          <ul class="mk-pkg__list">
+            <li v-for="item in p.items" :key="item">{{ item }}</li>
+          </ul>
+          <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20-%20Pricing%20Enquiry" class="mk-btn" :class="p.featured ? 'mk-btn--glow' : 'mk-btn--ghost'">
+            Request Pricing
           </a>
         </div>
       </div>
     </section>
 
-    <!-- ─── How It Works ─── -->
-    <section id="deploy" class="mk-deploy" data-animate>
-      <h2 class="mk-section-title">
-        Up and running in 24 hours
-        <span class="mk-section-title__line" />
-      </h2>
-      <p class="mk-section-sub">
-        We handle the technical setup so you can focus on your business.
-      </p>
-      <div class="mk-deploy__grid" :class="{ 'mk-visible': isVisible('deploy') }">
-        <div class="mk-deploy-card">
-          <div class="mk-deploy-card__num">01</div>
-          <h3 class="mk-deploy-card__title">Request a Demo</h3>
-          <p class="mk-deploy-card__desc">Get in touch and we'll walk you through the system live, tailored to your business.</p>
-        </div>
-        <div class="mk-deploy-card">
-          <div class="mk-deploy-card__num">02</div>
-          <h3 class="mk-deploy-card__title">We Deploy</h3>
-          <p class="mk-deploy-card__desc">We set up your branded instance — domain, SSL, branding, and staff accounts — all done for you.</p>
-        </div>
-        <div class="mk-deploy-card">
-          <div class="mk-deploy-card__num">03</div>
-          <h3 class="mk-deploy-card__title">Start Selling</h3>
-          <p class="mk-deploy-card__desc">Your team logs in from any device. Import your stock, and you're live. We handle backups and updates.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ─── CTA ─── -->
+    <!-- ═══ 10. FINAL CTA ═══ -->
     <section class="mk-cta">
       <div class="mk-cta__glow" />
-      <h2 class="mk-cta__title">Ready to take control?</h2>
-      <p class="mk-cta__text">
-        Get a live, personalised demo of Axionis POS configured for your business.
-      </p>
-      <a
-        href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request"
-        class="mk-btn mk-btn--glow mk-btn--lg"
-      >
-        Request a Demo
-      </a>
+      <h2 class="mk-cta__title">Ready to see Axionis POS in action?</h2>
+      <p class="mk-cta__text">Book a demo and see how Axionis POS handles sales, stock, consignment, and real-world operations.</p>
+      <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-btn mk-btn--glow mk-btn--lg">Request Demo</a>
     </section>
 
-    <!-- ─── Footer ─── -->
+    <!-- ═══ FOOTER ═══ -->
     <footer class="mk-footer">
       <div class="mk-footer__inner">
-        <img src="/brand/axionis-icon.png" alt="" class="mk-footer__icon" />
-        <span class="mk-footer__copy">Axionis POS — Built by <strong>Charsley Digital</strong></span>
+        <div class="mk-footer__brand">
+          <img src="/brand/axionis-icon.png" alt="" class="mk-footer__icon" />
+          <div>
+            <strong>Axionis POS</strong>
+            <span>Built for mobility. Designed for real-world operations.</span>
+          </div>
+        </div>
+        <div class="mk-footer__links">
+          <a href="mailto:hello@charsleydigital.com">Contact</a>
+          <span>Privacy</span>
+          <span>Terms</span>
+        </div>
+        <div class="mk-footer__copy">Built by <strong>Charsley Digital</strong></div>
       </div>
     </footer>
   </div>
 </template>
 
 <style scoped>
-/* ══════════════════════════════════════
-   AXIONIS MARKETING PAGE
-   ══════════════════════════════════════ */
-
 .mk {
-  --mk-bg: #050a18;
-  --mk-surface: #0d1525;
-  --mk-surface-2: #131d33;
-  --mk-border: #1a2744;
-  --mk-accent: #06b6d4;
-  --mk-accent-light: #22d3ee;
-  --mk-accent-glow: rgba(6, 182, 212, 0.35);
-  --mk-text: #e2e8f0;
-  --mk-text-bright: #f8fafc;
-  --mk-muted: #64748b;
-
+  --bg: #050a18;
+  --surface: #0c1424;
+  --surface-2: #111c32;
+  --border: #1a2744;
+  --accent: #06b6d4;
+  --accent-lt: #22d3ee;
+  --accent-glow: rgba(6,182,212,0.3);
+  --text: #e2e8f0;
+  --text-hi: #f8fafc;
+  --muted: #64748b;
   min-height: 100vh;
-  background: var(--mk-bg);
-  color: var(--mk-text);
-  font-family: 'Source Sans 3', 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Source Sans 3','Inter',system-ui,sans-serif;
   overflow-x: hidden;
 }
 
-/* ── Animate on scroll ── */
-.mk-visible { animation: mkFadeUp 0.7s ease both; }
-@keyframes mkFadeUp {
-  from { opacity: 0; transform: translateY(32px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Nav ── */
-.mk-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(5, 10, 24, 0.85);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--mk-border);
-}
-
-.mk-nav__inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.mk-nav__icon {
-  height: 28px;
-  width: auto;
-}
-
-.mk-nav__wordmark {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: 0.12em;
-  color: var(--mk-text-bright);
-}
-
-.mk-nav__spacer { flex: 1; }
-
-.mk-nav__link {
-  color: var(--mk-muted);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  transition: color 0.2s, background 0.2s;
-}
-
-.mk-nav__link:hover {
-  color: var(--mk-text-bright);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.mk-nav__cta {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 1.25rem;
-  border-radius: 8px;
-  background: var(--mk-accent);
-  color: #050a18;
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-.mk-nav__cta:hover {
-  background: var(--mk-accent-light);
-  box-shadow: 0 0 20px var(--mk-accent-glow);
-}
-
-/* ── Hero ── */
-.mk-hero {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8rem 2rem 4rem;
-  text-align: center;
-  overflow: hidden;
-}
-
-.mk-hero__bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
-}
-
-.mk-hero__glow {
-  position: absolute;
-  width: 700px;
-  height: 700px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.15), transparent 70%);
-  top: -15%;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  animation: mkPulse 6s ease-in-out infinite alternate;
-}
-
-.mk-hero__glow--2 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
-  top: 20%;
-  left: 30%;
-  animation-delay: -3s;
-  animation-duration: 8s;
-}
-
-@keyframes mkPulse {
-  from { opacity: 0.6; transform: translateX(-50%) scale(1); }
-  to   { opacity: 1; transform: translateX(-50%) scale(1.15); }
-}
-
-.mk-hero__content {
-  position: relative;
-  z-index: 1;
-  max-width: 800px;
-}
-
-.mk-hero__logo {
-  max-width: min(480px, 85vw);
-  height: auto;
-  margin-bottom: 2.5rem;
-  filter: drop-shadow(0 0 40px rgba(6, 182, 212, 0.2));
-}
-
-.mk-hero__headline {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  line-height: 1.15;
-  color: var(--mk-text-bright);
-  margin: 0 0 1.5rem;
-}
-
-.mk-hero__accent {
-  background: linear-gradient(135deg, var(--mk-accent), #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.mk-hero__sub {
-  font-size: 1.2rem;
-  line-height: 1.7;
-  color: var(--mk-muted);
-  max-width: 620px;
-  margin: 0 auto 2.5rem;
-}
-
-.mk-hero__actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* ── Buttons ── */
-.mk-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.85rem 2.25rem;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  transition: all 0.25s ease;
-  border: none;
-  cursor: pointer;
-}
-
-.mk-btn--glow {
-  background: linear-gradient(135deg, var(--mk-accent), #0891b2);
-  color: #050a18;
-  box-shadow: 0 0 30px var(--mk-accent-glow), 0 4px 15px rgba(0,0,0,0.3);
-}
-
-.mk-btn--glow:hover {
-  background: linear-gradient(135deg, var(--mk-accent-light), var(--mk-accent));
-  box-shadow: 0 0 50px var(--mk-accent-glow), 0 8px 25px rgba(0,0,0,0.3);
-  transform: translateY(-2px);
-}
-
-.mk-btn--ghost {
-  background: transparent;
-  color: var(--mk-accent);
-  border: 1.5px solid rgba(6, 182, 212, 0.4);
-}
-
-.mk-btn--ghost:hover {
-  background: rgba(6, 182, 212, 0.08);
-  border-color: var(--mk-accent);
-}
-
-.mk-btn--lg {
-  padding: 1.1rem 3rem;
-  font-size: 1.05rem;
-}
-
-/* ── Hero Stats ── */
-.mk-hero__stats {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  gap: 1px;
-  margin-top: 5rem;
-  background: var(--mk-border);
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid var(--mk-border);
-}
-
-.mk-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.5rem 2.5rem;
-  background: var(--mk-surface);
-}
-
-.mk-stat__value {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--mk-accent);
-}
-
-.mk-stat__label {
-  font-size: 0.75rem;
-  color: var(--mk-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 0.25rem;
-}
-
-/* ── Section Titles ── */
-.mk-section-title {
-  text-align: center;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mk-text-bright);
-  margin: 0 0 0.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.mk-section-title__line {
-  display: block;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--mk-accent), transparent);
-  border-radius: 2px;
-  margin-top: 0.75rem;
-}
-
-.mk-section-sub {
-  text-align: center;
-  font-size: 1.1rem;
-  color: var(--mk-muted);
-  max-width: 560px;
-  margin: 0.5rem auto 3.5rem;
-  line-height: 1.6;
-}
-
-/* ── Browser Mockup ── */
-.mk-preview {
-  padding: 6rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.mk-browser {
-  border-radius: 16px;
-  border: 1px solid var(--mk-border);
-  overflow: hidden;
-  box-shadow:
-    0 40px 80px rgba(0, 0, 0, 0.5),
-    0 0 80px rgba(6, 182, 212, 0.08);
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-
-.mk-browser.mk-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.mk-browser__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: #0a0f1f;
-  border-bottom: 1px solid var(--mk-border);
-}
-
-.mk-browser__dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ef4444;
-}
-
-.mk-browser__dot--yellow { background: #eab308; }
-.mk-browser__dot--green { background: #22c55e; }
-
-.mk-browser__url {
-  margin-left: 12px;
-  padding: 4px 16px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.75rem;
-  color: var(--mk-muted);
-  font-family: 'SF Mono', 'Fira Code', monospace;
-}
-
-.mk-browser__body {
-  display: flex;
-  min-height: 420px;
-  background: #f1f5f9;
-}
-
-/* ── Mock Sidebar ── */
-.mk-mock-sidebar {
-  width: 200px;
-  background: linear-gradient(180deg, #0f172a, #020617);
-  padding: 1rem 0;
-  flex-shrink: 0;
-  border-right: 1px solid #1e293b;
-}
-
-.mk-mock-sidebar__brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem 1rem;
-  border-bottom: 1px solid #1e293b;
-  margin-bottom: 0.75rem;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  color: #f1f5f9;
-}
-
-.mk-mock-sidebar__logo {
-  height: 22px;
-  width: auto;
-}
-
-.mk-mock-sidebar__label {
-  padding: 0.5rem 1rem 0.25rem;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #475569;
-}
-
-.mk-mock-sidebar__item {
-  padding: 0.4rem 1rem;
-  font-size: 0.7rem;
-  color: #94a3b8;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border-radius: 6px;
-  margin: 2px 0.5rem;
-}
-
-.mk-mock-sidebar__item--active {
-  background: rgba(6, 182, 212, 0.14);
-  color: #22d3ee;
-  border: 1px solid rgba(6, 182, 212, 0.3);
-}
-
-/* ── Mock Main ── */
-.mk-mock-main {
-  flex: 1;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.mk-mock-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.mk-mock-topbar__title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 1.1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #0f172a;
-}
-
-.mk-mock-topbar__badge {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  background: rgba(6, 182, 212, 0.12);
-  color: #0891b2;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.mk-mock-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  border-radius: 10px;
-  background: #fff;
-  border: 1.5px solid #94a3b8;
-}
-
-.mk-mock-search__icon {
-  font-size: 1rem;
-  color: #94a3b8;
-}
-
-.mk-mock-search__text {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-.mk-mock-cart {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #cbd5e1;
-  overflow: hidden;
-  flex: 1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.mk-mock-cart__header {
-  display: grid;
-  grid-template-columns: 2fr 0.5fr 1fr 1fr;
-  padding: 0.5rem 1rem;
-  font-size: 0.55rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #475569;
-  background: #f1f5f9;
-  border-bottom: 2px solid #cbd5e1;
-}
-
-.mk-mock-cart__row {
-  display: grid;
-  grid-template-columns: 2fr 0.5fr 1fr 1fr;
-  padding: 0.55rem 1rem;
-  font-size: 0.7rem;
-  color: #1e293b;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.mk-mock-cart__row--highlight {
-  background: rgba(6, 182, 212, 0.04);
-  animation: mkRowFlash 2s ease infinite alternate;
-}
-
-@keyframes mkRowFlash {
-  from { background: rgba(6, 182, 212, 0.04); }
-  to   { background: rgba(6, 182, 212, 0.1); }
-}
-
-.mk-mock-totals {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #cbd5e1;
-  padding: 0.75rem 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.mk-mock-totals__line {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.25rem 0;
-  font-size: 0.7rem;
-  color: #475569;
-}
-
-.mk-mock-totals__line--vat {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.4rem;
-  margin-bottom: 0.3rem;
-}
-
-.mk-mock-totals__line--total {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.mk-mock-totals__btn {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  text-align: center;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #22d3ee, #06b6d4);
-  color: #0f172a;
-  font-weight: 700;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* ── Features ── */
-.mk-features {
-  padding: 6rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.mk-features__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-@media (max-width: 900px) {
-  .mk-features__grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 600px) {
-  .mk-features__grid { grid-template-columns: 1fr; }
-}
-
-.mk-fcard {
-  padding: 2rem;
-  background: var(--mk-surface);
-  border: 1px solid var(--mk-border);
-  border-radius: 16px;
-  transition: border-color 0.3s, box-shadow 0.3s, opacity 0.6s, transform 0.6s;
-  opacity: 0;
-  transform: translateY(24px);
-}
-
-.mk-fcard.mk-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.mk-fcard:hover {
-  border-color: rgba(6, 182, 212, 0.4);
-  box-shadow: 0 0 30px rgba(6, 182, 212, 0.06);
-}
-
-.mk-fcard__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(6, 182, 212, 0.08);
-  border: 1px solid rgba(6, 182, 212, 0.15);
-  color: var(--mk-accent);
-  margin-bottom: 1.25rem;
-}
-
-.mk-fcard__icon svg {
-  width: 24px;
-  height: 24px;
-}
-
-.mk-fcard__title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--mk-text-bright);
-  margin: 0 0 0.65rem;
-}
-
-.mk-fcard__desc {
-  font-size: 0.92rem;
-  line-height: 1.6;
-  color: var(--mk-muted);
-  margin: 0;
-}
-
-/* ── Secondary Screens ── */
-.mk-screens {
-  padding: 6rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.mk-screens__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-.mk-screens__grid.mk-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (max-width: 900px) {
-  .mk-screens__grid { grid-template-columns: 1fr; }
-}
-
-.mk-screen-card {
-  border-radius: 16px;
-  border: 1px solid var(--mk-border);
-  overflow: hidden;
-  background: var(--mk-surface);
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-.mk-screen-card:hover {
-  border-color: rgba(6, 182, 212, 0.3);
-  box-shadow: 0 0 40px rgba(6, 182, 212, 0.06);
-}
-
-.mk-screen-card__label {
-  padding: 1rem 1.25rem;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.85rem;
-  color: var(--mk-accent);
-  border-bottom: 1px solid var(--mk-border);
-}
-
-.mk-screen-card__mock {
-  background: #f1f5f9;
-  padding: 0.75rem;
-  min-height: 280px;
-}
-
-.mk-mini-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #0f172a;
-}
-
-.mk-mini-actions {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.mk-mini-btn {
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-  background: linear-gradient(180deg, #22d3ee, #06b6d4);
-  color: #0f172a;
-  font-size: 0.55rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.mk-mini-btn--sec {
-  background: #fff;
-  color: #1e293b;
-  border: 1px solid #94a3b8;
-}
-
-.mk-mini-chip {
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  background: #fff;
-  color: #475569;
-  font-size: 0.55rem;
-  font-weight: 600;
-  border: 1px solid #cbd5e1;
-}
-
-.mk-mini-chip--active {
-  background: rgba(6, 182, 212, 0.12);
-  color: #0891b2;
-  border-color: rgba(6, 182, 212, 0.3);
-}
-
-.mk-mini-table {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  overflow: hidden;
-  font-size: 0.6rem;
-}
-
-.mk-mini-table__head {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr 0.8fr;
-  padding: 0.4rem 0.6rem;
-  background: #f1f5f9;
-  border-bottom: 1.5px solid #cbd5e1;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.5rem;
-}
-
-.mk-mini-table__row {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1fr 0.8fr;
-  padding: 0.4rem 0.6rem;
-  color: #1e293b;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.mk-mini-table__row:last-child {
-  border-bottom: none;
-}
-
-.mk-qty-ok { color: #16a34a; font-weight: 700; }
-.mk-qty-low { color: #d97706; font-weight: 700; }
-.mk-qty-out { color: #dc2626; font-weight: 700; }
-
-.mk-badge {
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.5rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.mk-badge--sent { background: #dbeafe; color: #1d4ed8; }
-.mk-badge--draft { background: #f1f5f9; color: #475569; }
-.mk-badge--accepted { background: #dcfce7; color: #15803d; }
-.mk-badge--invoiced { background: #d1fae5; color: #047857; }
-
-/* ── KPIs ── */
-.mk-kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.35rem;
-  margin-bottom: 0.5rem;
-}
-
-.mk-kpi {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  padding: 0.4rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-}
-
-.mk-kpi__val {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-  font-size: 0.7rem;
-  color: #0f172a;
-}
-
-.mk-kpi__label {
-  font-size: 0.45rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-/* ── Chart Bars ── */
-.mk-chart-bars {
-  display: flex;
-  gap: 0.35rem;
-  align-items: flex-end;
-  height: 90px;
-  padding: 0.5rem;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-}
-
-.mk-chart-bar {
-  flex: 1;
-  height: var(--h);
-  background: linear-gradient(180deg, #22d3ee, #0891b2);
-  border-radius: 4px 4px 0 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  position: relative;
-}
-
-.mk-chart-bar span {
-  position: absolute;
-  bottom: -14px;
-  font-size: 0.45rem;
-  color: #64748b;
-  font-weight: 600;
-}
-
-/* ── Pricing ── */
-.mk-pricing {
-  padding: 6rem 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.mk-pricing__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  align-items: start;
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-.mk-pricing__grid.mk-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (max-width: 700px) {
-  .mk-pricing__grid { grid-template-columns: 1fr; }
-}
-
-.mk-price-card {
-  position: relative;
-  padding: 2.5rem 2rem;
-  background: var(--mk-surface);
-  border: 1px solid var(--mk-border);
-  border-radius: 20px;
-  text-align: center;
-}
-
-.mk-price-card--featured {
-  border-color: rgba(6, 182, 212, 0.5);
-  box-shadow: 0 0 50px rgba(6, 182, 212, 0.1);
-  background: linear-gradient(180deg, var(--mk-surface-2), var(--mk-surface));
-}
-
-.mk-price-card__badge {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.3rem 1.25rem;
-  border-radius: 20px;
-  background: linear-gradient(135deg, var(--mk-accent), #0891b2);
-  color: #050a18;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-}
-
-.mk-price-card__label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--mk-muted);
-  margin-bottom: 0.5rem;
-}
-
-.mk-price-card__amount {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--mk-text-bright);
-  line-height: 1;
-}
-
-.mk-price-card--featured .mk-price-card__amount {
-  color: var(--mk-accent-light);
-}
-
-.mk-price-card__period {
-  font-size: 0.9rem;
-  color: var(--mk-muted);
-  margin-bottom: 2rem;
-}
-
-.mk-price-card__list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1.5rem;
-  text-align: left;
-}
-
-.mk-price-card__list li {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--mk-border);
-  font-size: 0.9rem;
-  color: var(--mk-text);
-  padding-left: 1.5rem;
-  position: relative;
-}
-
-.mk-price-card__list li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: var(--mk-accent);
-  font-weight: 700;
-}
-
-.mk-price-card__list li:last-child {
-  border-bottom: none;
-}
-
-.mk-price-card__btn {
-  width: 100%;
-  margin-top: 0.5rem;
-}
-
-/* ── Deploy ── */
-.mk-deploy {
-  padding: 6rem 2rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.mk-deploy__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-
-.mk-deploy__grid.mk-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (max-width: 700px) {
-  .mk-deploy__grid { grid-template-columns: 1fr; }
-}
-
-.mk-deploy-card {
-  padding: 2rem;
-  background: var(--mk-surface);
-  border: 1px solid var(--mk-border);
-  border-radius: 16px;
-  transition: border-color 0.3s;
-}
-
-.mk-deploy-card:hover {
-  border-color: rgba(6, 182, 212, 0.3);
-}
-
-.mk-deploy-card__num {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--mk-accent);
-  opacity: 0.6;
-  margin-bottom: 0.75rem;
-}
-
-.mk-deploy-card__title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--mk-text-bright);
-  margin: 0 0 0.65rem;
-}
-
-.mk-deploy-card__desc {
-  font-size: 0.92rem;
-  line-height: 1.6;
-  color: var(--mk-muted);
-  margin: 0;
-}
-
-.mk-deploy-card__desc code {
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-  background: rgba(6, 182, 212, 0.08);
-  color: var(--mk-accent);
-  font-size: 0.85rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-}
+.mk-visible { animation: fadeUp .7s ease both; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── NAV ── */
+.mk-nav { position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,10,24,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--border); }
+.mk-nav__inner { max-width:1200px;margin:0 auto;padding:0 2rem;height:64px;display:flex;align-items:center;gap:.75rem; }
+.mk-nav__icon { height:28px;width:auto; }
+.mk-nav__wordmark { font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.12em;color:var(--text-hi); }
+.mk-nav__spacer { flex:1; }
+.mk-nav__link { color:var(--muted);text-decoration:none;font-size:.875rem;font-weight:600;letter-spacing:.04em;padding:.5rem .75rem;border-radius:8px;transition:color .2s,background .2s; }
+.mk-nav__link:hover { color:var(--text-hi);background:rgba(255,255,255,.04); }
+.mk-nav__cta { display:inline-flex;align-items:center;padding:.5rem 1.25rem;border-radius:8px;background:var(--accent);color:#050a18;font-weight:700;font-size:.85rem;text-decoration:none;letter-spacing:.04em;transition:background .2s,box-shadow .2s; }
+.mk-nav__cta:hover { background:var(--accent-lt);box-shadow:0 0 20px var(--accent-glow); }
+.mk-hide-mobile { }
+
+/* ── BUTTONS ── */
+.mk-btn { display:inline-flex;align-items:center;justify-content:center;padding:.85rem 2.25rem;border-radius:10px;font-size:.95rem;font-weight:700;text-decoration:none;letter-spacing:.04em;transition:all .25s;border:none;cursor:pointer; }
+.mk-btn--glow { background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;box-shadow:0 0 30px var(--accent-glow),0 4px 15px rgba(0,0,0,.3); }
+.mk-btn--glow:hover { background:linear-gradient(135deg,var(--accent-lt),var(--accent));box-shadow:0 0 50px var(--accent-glow),0 8px 25px rgba(0,0,0,.3);transform:translateY(-2px); }
+.mk-btn--ghost { background:transparent;color:var(--accent);border:1.5px solid rgba(6,182,212,.4); }
+.mk-btn--ghost:hover { background:rgba(6,182,212,.08);border-color:var(--accent); }
+.mk-btn--lg { padding:1.1rem 3rem;font-size:1.05rem; }
+
+/* ── HERO ── */
+.mk-hero { position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7rem 2rem 4rem;text-align:center;overflow:hidden; }
+.mk-hero__grid-bg { position:absolute;inset:0;background-image:linear-gradient(rgba(6,182,212,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,.03) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,black,transparent); }
+.mk-hero__glow { position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.15),transparent 70%);top:-15%;left:50%;transform:translateX(-50%);pointer-events:none;animation:pulse 6s ease-in-out infinite alternate; }
+.mk-hero__glow--2 { width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent 70%);top:20%;left:30%;animation-delay:-3s;animation-duration:8s; }
+@keyframes pulse { from{opacity:.6;transform:translateX(-50%) scale(1)} to{opacity:1;transform:translateX(-50%) scale(1.15)} }
+.mk-hero__content { position:relative;z-index:1;max-width:800px; }
+.mk-hero__logo { max-width:min(440px,85vw);height:auto;margin-bottom:2rem;filter:drop-shadow(0 0 40px rgba(6,182,212,.2)); }
+.mk-hero__tagline { font-size:1.05rem;font-weight:600;color:var(--accent);letter-spacing:.03em;margin:0 0 1rem; }
+.mk-hero__headline { font-family:'Barlow Condensed',sans-serif;font-size:clamp(1.75rem,4.5vw,3rem);font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;color:var(--text-hi);margin:0 0 2rem; }
+.mk-hero__accent { background:linear-gradient(135deg,var(--accent),#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.mk-hero__actions { display:flex;gap:1rem;justify-content:center;flex-wrap:wrap; }
+
+.mk-hero__indicators { position:relative;z-index:1;display:flex;gap:1px;margin-top:4rem;background:var(--border);border-radius:14px;overflow:hidden;border:1px solid var(--border); }
+.mk-indicator { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:1.25rem 2rem;background:var(--surface);min-width:0; }
+.mk-indicator svg { width:22px;height:22px;color:var(--accent); }
+.mk-indicator span { font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap; }
+
+/* ── SECTIONS ── */
+.mk-section { padding:6rem 2rem;max-width:1100px;margin:0 auto; }
+.mk-section--wide { max-width:1200px; }
+.mk-section-title { text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hi);margin:0 0 .5rem;display:flex;flex-direction:column;align-items:center; }
+.mk-section-title__line { display:block;width:60px;height:3px;background:linear-gradient(90deg,var(--accent),transparent);border-radius:2px;margin-top:.75rem; }
+.mk-section-sub { text-align:center;font-size:1.1rem;color:var(--muted);max-width:600px;margin:.5rem auto 3rem;line-height:1.6; }
+
+/* ── AUDIENCE ── */
+.mk-audience-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
+.mk-audience-grid.mk-visible { opacity:1;transform:translateY(0); }
+.mk-audience-card { padding:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:border-color .3s; }
+.mk-audience-card:hover { border-color:rgba(6,182,212,.35); }
+.mk-audience-card__title { font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-hi);margin:0 0 .4rem; }
+.mk-audience-card__desc { font-size:.88rem;color:var(--muted);margin:0;line-height:1.5; }
+
+/* ── FEATURES ── */
+.mk-features-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem; }
+.mk-fcard { padding:1.75rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:border-color .3s,box-shadow .3s,opacity .6s,transform .6s;opacity:0;transform:translateY(20px); }
+.mk-fcard.mk-visible { opacity:1;transform:translateY(0); }
+.mk-fcard:hover { border-color:rgba(6,182,212,.35);box-shadow:0 0 24px rgba(6,182,212,.05); }
+.mk-fcard__icon { display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.15);color:var(--accent);margin-bottom:1rem; }
+.mk-fcard__icon svg { width:22px;height:22px; }
+.mk-fcard__title { font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-hi);margin:0 0 .5rem; }
+.mk-fcard__desc { font-size:.88rem;line-height:1.55;color:var(--muted);margin:0; }
+
+/* ── BROWSER MOCKUP ── */
+.mk-browser { border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.5),0 0 60px rgba(6,182,212,.06);opacity:0;transform:translateY(40px);transition:opacity .8s,transform .8s; }
+.mk-browser.mk-visible { opacity:1;transform:translateY(0); }
+.mk-browser__bar { display:flex;align-items:center;gap:8px;padding:12px 16px;background:#0a0f1f;border-bottom:1px solid var(--border); }
+.mk-browser__dot { width:12px;height:12px;border-radius:50%;background:#ef4444; }
+.mk-browser__dot--y { background:#eab308; }
+.mk-browser__dot--g { background:#22c55e; }
+.mk-browser__url { margin-left:12px;padding:4px 16px;border-radius:6px;background:rgba(255,255,255,.04);font-size:.75rem;color:var(--muted);font-family:'SF Mono','Fira Code',monospace; }
+.mk-browser__body { display:flex;min-height:400px;background:#f1f5f9; }
+
+.mk-mock-sidebar { width:190px;background:linear-gradient(180deg,#0f172a,#020617);padding:.75rem 0;flex-shrink:0;border-right:1px solid #1e293b; }
+.mk-mock-sidebar__brand { display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem .75rem;border-bottom:1px solid #1e293b;margin-bottom:.5rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.1em;color:#f1f5f9; }
+.mk-mock-sidebar__logo { height:20px;width:auto; }
+.mk-mock-sidebar__label { padding:.4rem 1rem .15rem;font-size:.5rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#475569; }
+.mk-mock-sidebar__item { padding:.35rem 1rem;font-size:.65rem;color:#94a3b8;font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:5px;margin:2px .4rem; }
+.mk-mock-sidebar__item--active { background:rgba(6,182,212,.14);color:#22d3ee;border:1px solid rgba(6,182,212,.3); }
+
+.mk-mock-main { flex:1;padding:1rem;display:flex;flex-direction:column;gap:.6rem;min-width:0; }
+.mk-mock-topbar { display:flex;align-items:center;justify-content:space-between; }
+.mk-mock-topbar__title { font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:.05em;color:#0f172a; }
+.mk-mock-badge { font-size:.55rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;background:rgba(6,182,212,.12);color:#0891b2;text-transform:uppercase;letter-spacing:.06em; }
+.mk-mock-search { padding:.5rem .75rem;border-radius:8px;background:#fff;border:1.5px solid #94a3b8;font-size:.7rem;color:#94a3b8; }
+.mk-mock-cart { background:#fff;border-radius:12px;border:1px solid #cbd5e1;overflow:hidden;flex:1;box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.mk-mock-cart__head { display:grid;grid-template-columns:2fr .5fr 1fr 1fr;padding:.4rem .75rem;font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;background:#f1f5f9;border-bottom:2px solid #cbd5e1; }
+.mk-mock-cart__row { display:grid;grid-template-columns:2fr .5fr 1fr 1fr;padding:.45rem .75rem;font-size:.65rem;color:#1e293b;border-bottom:1px solid #e2e8f0; }
+.mk-mock-cart__row--hl { background:rgba(6,182,212,.06); }
+.mk-mock-footer { background:#fff;border-radius:12px;border:1px solid #cbd5e1;padding:.6rem .75rem;box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.mk-mock-footer__line { display:flex;justify-content:space-between;padding:.2rem 0;font-size:.65rem;color:#475569; }
+.mk-mock-footer__line--vat { border-bottom:1px solid #e2e8f0;padding-bottom:.35rem;margin-bottom:.25rem; }
+.mk-mock-footer__line--total { font-size:.85rem;font-weight:700;color:#0f172a; }
+.mk-mock-footer__btn { margin-top:.4rem;padding:.45rem;text-align:center;border-radius:8px;background:linear-gradient(180deg,#22d3ee,#06b6d4);color:#0f172a;font-weight:700;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em; }
+
+/* ── SPLIT SECTIONS ── */
+.mk-split { display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
+.mk-split.mk-visible { opacity:1;transform:translateY(0); }
+.mk-split--reverse { direction:rtl; }
+.mk-split--reverse > * { direction:ltr; }
+.mk-split__title { font-family:'Barlow Condensed',sans-serif;font-size:1.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;color:var(--text-hi);margin:0 0 1rem; }
+.mk-split__desc { font-size:1.05rem;color:var(--muted);line-height:1.6;margin:0 0 1.5rem; }
+
+.mk-check-list { list-style:none;padding:0;margin:0; }
+.mk-check-list li { padding:.4rem 0 .4rem 1.5rem;font-size:.95rem;color:var(--text);position:relative; }
+.mk-check-list li::before { content:'✓';position:absolute;left:0;color:var(--accent);font-weight:700; }
+
+/* ── DEVICE MOCKUP ── */
+.mk-device { width:260px;margin:0 auto;border:3px solid #334155;border-radius:28px;overflow:hidden;background:#0f172a;box-shadow:0 20px 60px rgba(0,0,0,.4); }
+.mk-device__screen { padding:.75rem; }
+.mk-device__bar { font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);padding:.5rem 0;border-bottom:1px solid #1e293b;margin-bottom:.5rem; }
+.mk-device__row { padding:.4rem .5rem;border-radius:6px;background:rgba(255,255,255,.04);font-size:.65rem;color:#64748b;margin-bottom:.5rem; }
+.mk-device__item { display:flex;justify-content:space-between;padding:.35rem 0;font-size:.7rem;color:#e2e8f0;border-bottom:1px solid #1e293b; }
+.mk-device__qty { color:var(--accent);font-weight:700; }
+.mk-device__total { display:flex;justify-content:space-between;padding:.5rem 0;font-size:.85rem;font-weight:700;color:var(--text-hi);border-top:1px solid var(--accent);margin-top:.35rem; }
+.mk-device__btn { margin-top:.5rem;padding:.5rem;text-align:center;border-radius:8px;background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;font-weight:700;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em; }
+
+/* ── MINI CARD MOCKUP ── */
+.mk-mini-card { background:#fff;border-radius:14px;border:1px solid #cbd5e1;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08);max-width:380px;margin:0 auto; }
+.mk-mini-card__head { padding:.75rem 1rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:#0f172a;background:#f8fafc;border-bottom:1px solid #e2e8f0; }
+.mk-mini-card__row { display:grid;grid-template-columns:1fr 2fr .8fr .8fr;padding:.4rem 1rem;font-size:.6rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.06em; }
+.mk-mini-card__row--data { font-weight:400;color:#1e293b;text-transform:none;border-bottom:1px solid #f1f5f9; }
+.mk-mini-card__bar { margin:.75rem 1rem .25rem;height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden; }
+.mk-mini-card__bar-fill { height:100%;background:linear-gradient(90deg,var(--accent),#0891b2);border-radius:3px; }
+.mk-mini-card__foot { padding:.25rem 1rem .75rem;font-size:.65rem;color:#64748b; }
+.mk-text-ok { color:#16a34a;font-weight:600; }
+.mk-text-warn { color:#d97706;font-weight:600; }
+.mk-pill { padding:.15rem .4rem;border-radius:4px;font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em; }
+.mk-pill--blue { background:#dbeafe;color:#1d4ed8; }
+.mk-pill--grey { background:#f1f5f9;color:#475569; }
+.mk-pill--green { background:#dcfce7;color:#15803d; }
+
+/* ── HOSTING ── */
+.mk-hosting-grid { display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
+.mk-hosting-grid.mk-visible { opacity:1;transform:translateY(0); }
+.mk-hosting-card { padding:2rem;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:center; }
+.mk-hosting-card p { font-size:.92rem;color:var(--muted);margin:.75rem 0 0;line-height:1.5; }
+.mk-hosting-card__domain { font-family:'SF Mono','Fira Code',monospace;font-size:1rem;color:var(--accent);padding:.5rem 1rem;background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.2);border-radius:8px;display:inline-block; }
+.mk-hosting-features { display:flex;flex-wrap:wrap;justify-content:center;gap:.75rem;opacity:0;transform:translateY(16px);transition:opacity .7s .2s,transform .7s .2s; }
+.mk-hosting-features.mk-visible { opacity:1;transform:translateY(0); }
+.mk-hosting-features span { padding:.4rem 1rem;border-radius:20px;background:var(--surface);border:1px solid var(--border);font-size:.8rem;color:var(--text);font-weight:600; }
+
+/* ── PRICING ── */
+.mk-pricing-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s; }
+.mk-pricing-grid.mk-visible { opacity:1;transform:translateY(0); }
+.mk-pkg { position:relative;padding:2.25rem 1.75rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;transition:border-color .3s; }
+.mk-pkg:hover { border-color:rgba(6,182,212,.3); }
+.mk-pkg--featured { border-color:rgba(6,182,212,.5);box-shadow:0 0 50px rgba(6,182,212,.08);background:linear-gradient(180deg,var(--surface-2),var(--surface)); }
+.mk-pkg__badge { position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:.3rem 1.25rem;border-radius:20px;background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap; }
+.mk-pkg__name { font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-hi);margin:0 0 .35rem; }
+.mk-pkg__desc { font-size:.88rem;color:var(--muted);margin:0 0 1.5rem;line-height:1.5; }
+.mk-pkg__list { list-style:none;padding:0;margin:0 0 1.5rem;flex:1; }
+.mk-pkg__list li { padding:.45rem 0 .45rem 1.5rem;font-size:.88rem;color:var(--text);position:relative;border-bottom:1px solid var(--border); }
+.mk-pkg__list li::before { content:'✓';position:absolute;left:0;color:var(--accent);font-weight:700; }
+.mk-pkg__list li:last-child { border-bottom:none; }
+.mk-pkg .mk-btn { width:100%;text-align:center; }
 
 /* ── CTA ── */
-.mk-cta {
-  position: relative;
-  text-align: center;
-  padding: 7rem 2rem;
-  overflow: hidden;
+.mk-cta { position:relative;text-align:center;padding:7rem 2rem;overflow:hidden; }
+.mk-cta__glow { position:absolute;width:600px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.12),transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none; }
+.mk-cta__title { position:relative;font-family:'Barlow Condensed',sans-serif;font-size:2.25rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-hi);margin:0 0 1rem; }
+.mk-cta__text { position:relative;font-size:1.15rem;color:var(--muted);margin:0 0 2.5rem;line-height:1.6; }
+
+/* ── FOOTER ── */
+.mk-footer { border-top:1px solid var(--border);padding:3rem 2rem; }
+.mk-footer__inner { max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1.5rem; }
+.mk-footer__brand { display:flex;align-items:center;gap:.75rem; }
+.mk-footer__icon { height:28px;width:auto;opacity:.6; }
+.mk-footer__brand strong { display:block;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-hi); }
+.mk-footer__brand span { font-size:.75rem;color:var(--muted); }
+.mk-footer__links { display:flex;gap:1.5rem; }
+.mk-footer__links a,.mk-footer__links span { font-size:.85rem;color:var(--muted);text-decoration:none;cursor:pointer; }
+.mk-footer__links a:hover { color:var(--accent); }
+.mk-footer__copy { font-size:.85rem;color:var(--muted); }
+.mk-footer__copy strong { color:var(--accent);font-weight:600; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px) {
+  .mk-split { grid-template-columns:1fr;gap:2rem; }
+  .mk-split--reverse { direction:ltr; }
+  .mk-pricing-grid { grid-template-columns:1fr; }
+  .mk-hosting-grid { grid-template-columns:1fr; }
+  .mk-features-grid { grid-template-columns:repeat(2,1fr); }
 }
 
-.mk-cta__glow {
-  position: absolute;
-  width: 600px;
-  height: 400px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.12), transparent 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+@media(max-width:768px) {
+  .mk-hero { padding:6rem 1.25rem 3rem; }
+  .mk-hero__indicators { flex-wrap:wrap;justify-content:center; }
+  .mk-indicator { padding:.75rem 1.25rem; }
+  .mk-hide-mobile { display:none; }
+  .mk-nav__link { padding:.5rem .4rem;font-size:.8rem; }
+  .mk-section { padding:4rem 1.25rem; }
+
+  .mk-browser__body { flex-direction:column; }
+  .mk-mock-sidebar { width:100%;padding:.5rem;display:flex;gap:.4rem;overflow-x:auto;flex-wrap:wrap; }
+  .mk-mock-sidebar__brand { padding:.25rem .5rem;margin-bottom:0;border-bottom:none; }
+  .mk-mock-sidebar__label { display:none; }
+  .mk-mock-sidebar__item { white-space:nowrap;font-size:.55rem;padding:.25rem .5rem; }
+
+  .mk-footer__inner { flex-direction:column;align-items:flex-start; }
 }
 
-.mk-cta__title {
-  position: relative;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 2.25rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mk-text-bright);
-  margin: 0 0 1rem;
-}
-
-.mk-cta__text {
-  position: relative;
-  font-size: 1.15rem;
-  color: var(--mk-muted);
-  margin: 0 0 2.5rem;
-  line-height: 1.6;
-}
-
-/* ── Footer ── */
-.mk-footer {
-  border-top: 1px solid var(--mk-border);
-  padding: 2rem;
-}
-
-.mk-footer__inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.mk-footer__icon {
-  height: 20px;
-  width: auto;
-  opacity: 0.5;
-}
-
-.mk-footer__copy {
-  font-size: 0.85rem;
-  color: var(--mk-muted);
-}
-
-.mk-footer__copy strong {
-  color: var(--mk-accent);
-  font-weight: 600;
-}
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .mk-hero { padding: 7rem 1.25rem 3rem; }
-  .mk-hero__stats { flex-direction: column; }
-  .mk-stat { padding: 1rem 1.5rem; flex-direction: row; gap: 0.75rem; justify-content: center; }
-
-  .mk-nav__link--hide-mobile { display: none; }
-  .mk-nav__link { padding: 0.5rem 0.5rem; font-size: 0.8rem; }
-
-  .mk-browser__body { flex-direction: column; }
-  .mk-mock-sidebar { width: 100%; padding: 0.5rem; display: flex; gap: 0.5rem; overflow-x: auto; flex-wrap: wrap; }
-  .mk-mock-sidebar__brand { padding: 0.25rem 0.5rem; margin-bottom: 0; border-bottom: none; }
-  .mk-mock-sidebar__label { display: none; }
-  .mk-mock-sidebar__item { white-space: nowrap; font-size: 0.6rem; padding: 0.3rem 0.6rem; }
-
-  .mk-preview { padding: 4rem 1rem; }
-  .mk-features { padding: 4rem 1rem; }
-  .mk-screens { padding: 4rem 1rem; }
-  .mk-deploy { padding: 4rem 1rem; }
-}
-
-@media (max-width: 500px) {
-  .mk-kpi-row { grid-template-columns: repeat(2, 1fr); }
-  .mk-mini-table__head,
-  .mk-mini-table__row { grid-template-columns: 1fr 2fr 1fr; }
-  .mk-mini-table__head span:last-child,
-  .mk-mini-table__row span:last-child { display: none; }
+@media(max-width:600px) {
+  .mk-features-grid { grid-template-columns:1fr; }
+  .mk-audience-grid { grid-template-columns:1fr; }
 }
 </style>
