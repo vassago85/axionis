@@ -91,7 +91,7 @@ const stats = [
         </h1>
         <p class="mk-hero__sub">
           Mobile-first point of sale, stock management, consignment tracking, and business intelligence —
-          deployable anywhere, owned by you.
+          fully hosted and managed for you.
         </p>
         <div class="mk-hero__actions">
           <a
