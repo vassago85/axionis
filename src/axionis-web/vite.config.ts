@@ -27,13 +27,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/favicon.png',
+            src: '/brand/axionis-icon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/favicon.png',
+            src: '/brand/axionis-icon.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'

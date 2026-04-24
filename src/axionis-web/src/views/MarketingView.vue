@@ -57,8 +57,8 @@ const features = [
 
 const stats = [
   { value: '< 2s', label: 'Average checkout' },
-  { value: '100%', label: 'Cloud or on-prem' },
-  { value: '0', label: 'Monthly fees' },
+  { value: '100%', label: 'Cloud hosted' },
+  { value: 'R1,000', label: 'Per month' },
   { value: '∞', label: 'Users & devices' }
 ]
 </script>
@@ -71,9 +71,9 @@ const stats = [
         <img src="/brand/axionis-icon.png" alt="Axionis" class="mk-nav__icon" />
         <span class="mk-nav__wordmark">AXIONIS</span>
         <div class="mk-nav__spacer" />
-        <a href="#features" class="mk-nav__link">Features</a>
-        <a href="#preview" class="mk-nav__link">Preview</a>
-        <a href="#deploy" class="mk-nav__link mk-nav__link--hide-mobile">Deploy</a>
+        <router-link to="/login" class="mk-nav__link">Features</router-link>
+        <router-link to="/login" class="mk-nav__link">Preview</router-link>
+        <router-link to="/login" class="mk-nav__link mk-nav__link--hide-mobile">Pricing</router-link>
         <router-link to="/login" class="mk-nav__cta">Sign In</router-link>
       </div>
     </nav>
@@ -100,7 +100,7 @@ const stats = [
           >
             Request a Demo
           </a>
-          <a href="#features" class="mk-btn mk-btn--ghost">Explore Features</a>
+          <router-link to="/login" class="mk-btn mk-btn--ghost">Sign In</router-link>
         </div>
       </div>
 
@@ -301,30 +301,76 @@ const stats = [
       </div>
     </section>
 
-    <!-- ─── Deploy ─── -->
-    <section id="deploy" class="mk-deploy" data-animate>
+    <!-- ─── Pricing ─── -->
+    <section id="pricing" class="mk-pricing" data-animate>
       <h2 class="mk-section-title">
-        Your system. Your server. Your data.
+        Simple, transparent pricing
         <span class="mk-section-title__line" />
       </h2>
       <p class="mk-section-sub">
-        No subscriptions, no vendor lock-in. Axionis deploys as a Docker stack you own and control.
+        No per-user fees. No transaction charges. No surprises.
+      </p>
+
+      <div class="mk-pricing__grid" :class="{ 'mk-visible': isVisible('pricing') }">
+        <div class="mk-price-card">
+          <div class="mk-price-card__label">Once-off</div>
+          <div class="mk-price-card__amount">R 3,500</div>
+          <div class="mk-price-card__period">setup fee</div>
+          <ul class="mk-price-card__list">
+            <li>Full system deployment</li>
+            <li>Custom branding & domain</li>
+            <li>Your own isolated database</li>
+            <li>Staff account setup</li>
+            <li>Onboarding & training session</li>
+          </ul>
+        </div>
+        <div class="mk-price-card mk-price-card--featured">
+          <div class="mk-price-card__badge">Most popular</div>
+          <div class="mk-price-card__label">Monthly</div>
+          <div class="mk-price-card__amount">R 1,000</div>
+          <div class="mk-price-card__period">per month</div>
+          <ul class="mk-price-card__list">
+            <li>Cloud hosting & SSL</li>
+            <li>Automatic backups & recovery</li>
+            <li>All software updates included</li>
+            <li>Unlimited users & devices</li>
+            <li>Email & chat support</li>
+            <li>Disaster recovery guarantee</li>
+          </ul>
+          <a
+            href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20-%20Get%20Started"
+            class="mk-btn mk-btn--glow mk-price-card__btn"
+          >
+            Get Started
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── How It Works ─── -->
+    <section id="deploy" class="mk-deploy" data-animate>
+      <h2 class="mk-section-title">
+        Up and running in 24 hours
+        <span class="mk-section-title__line" />
+      </h2>
+      <p class="mk-section-sub">
+        We handle the technical setup so you can focus on your business.
       </p>
       <div class="mk-deploy__grid" :class="{ 'mk-visible': isVisible('deploy') }">
         <div class="mk-deploy-card">
           <div class="mk-deploy-card__num">01</div>
-          <h3 class="mk-deploy-card__title">Clone & Configure</h3>
-          <p class="mk-deploy-card__desc">Pull the repository, set your environment variables, and configure your branding.</p>
+          <h3 class="mk-deploy-card__title">Request a Demo</h3>
+          <p class="mk-deploy-card__desc">Get in touch and we'll walk you through the system live, tailored to your business.</p>
         </div>
         <div class="mk-deploy-card">
           <div class="mk-deploy-card__num">02</div>
-          <h3 class="mk-deploy-card__title">Deploy</h3>
-          <p class="mk-deploy-card__desc">One <code>docker compose up</code> command builds and launches API, database, and web interface.</p>
+          <h3 class="mk-deploy-card__title">We Deploy</h3>
+          <p class="mk-deploy-card__desc">We set up your branded instance — domain, SSL, branding, and staff accounts — all done for you.</p>
         </div>
         <div class="mk-deploy-card">
           <div class="mk-deploy-card__num">03</div>
-          <h3 class="mk-deploy-card__title">Operate</h3>
-          <p class="mk-deploy-card__desc">Your team logs in from any device. Fully isolated instance with your own database and domain.</p>
+          <h3 class="mk-deploy-card__title">Start Selling</h3>
+          <p class="mk-deploy-card__desc">Your team logs in from any device. Import your stock, and you're live. We handle backups and updates.</p>
         </div>
       </div>
     </section>
@@ -1213,6 +1259,123 @@ const stats = [
   font-size: 0.45rem;
   color: #64748b;
   font-weight: 600;
+}
+
+/* ── Pricing ── */
+.mk-pricing {
+  padding: 6rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.mk-pricing__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  align-items: start;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.mk-pricing__grid.mk-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 700px) {
+  .mk-pricing__grid { grid-template-columns: 1fr; }
+}
+
+.mk-price-card {
+  position: relative;
+  padding: 2.5rem 2rem;
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.mk-price-card--featured {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 50px rgba(6, 182, 212, 0.1);
+  background: linear-gradient(180deg, var(--mk-surface-2), var(--mk-surface));
+}
+
+.mk-price-card__badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.3rem 1.25rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--mk-accent), #0891b2);
+  color: #050a18;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.mk-price-card__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mk-muted);
+  margin-bottom: 0.5rem;
+}
+
+.mk-price-card__amount {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--mk-text-bright);
+  line-height: 1;
+}
+
+.mk-price-card--featured .mk-price-card__amount {
+  color: var(--mk-accent-light);
+}
+
+.mk-price-card__period {
+  font-size: 0.9rem;
+  color: var(--mk-muted);
+  margin-bottom: 2rem;
+}
+
+.mk-price-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  text-align: left;
+}
+
+.mk-price-card__list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mk-border);
+  font-size: 0.9rem;
+  color: var(--mk-text);
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.mk-price-card__list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--mk-accent);
+  font-weight: 700;
+}
+
+.mk-price-card__list li:last-child {
+  border-bottom: none;
+}
+
+.mk-price-card__btn {
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 /* ── Deploy ── */

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { logoDark } from '@/branding'
+const logoLightBg = '/brand/axionis-light-bg.png'
 import { useBranding } from '@/composables/useBranding'
 import McButton from '@/components/ui/McButton.vue'
 import McField from '@/components/ui/McField.vue'
@@ -38,7 +38,7 @@ async function submit() {
   <div class="auth-layout">
     <div class="auth-panel">
       <div class="auth-panel__brand">
-        <img class="auth-panel__logo" :src="logoUrl ?? logoDark" :alt="businessName" />
+        <img class="auth-panel__logo" :src="logoUrl ?? logoLightBg" :alt="businessName" />
         <p class="auth-panel__tagline">Point of sale</p>
       </div>
       <h1 class="sr-only">Sign in to {{ businessName }} POS</h1>
