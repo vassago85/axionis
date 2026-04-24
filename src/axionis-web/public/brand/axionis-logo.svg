@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 40" fill="none">
+  <g transform="translate(0,4)">
+    <!-- Abstract "A" icon: two angled lines + central dot -->
+    <line x1="8" y1="28" x2="18" y2="4" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="28" x2="18" y2="4" stroke="#06b6d4" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="18" cy="18" r="2.5" fill="#06b6d4"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="42" y="28" font-family="'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="700" letter-spacing="0.5" fill="currentColor">Axionis</text>
+  <text x="155" y="28" font-family="'Inter','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="300" letter-spacing="0.5" fill="#06b6d4">POS</text>
+</svg>

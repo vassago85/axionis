@@ -1,0 +1,23 @@
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/node_modules/
+**/dist/
+**/storage/pdfs/
+**/.env
+.env
+
+# Track example env files
+!.env.example
+!.env.demo.example
+!.env.client.example
+!.env.docker.example
+.vs/
+
+# Local commit message scratch file (do not commit)
+.commitmsg.tmp
+
+# Docker Compose local data (SQLite + PDFs)
+/data/

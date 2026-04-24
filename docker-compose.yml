@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: ./src/AxionisPos.Api
+      dockerfile: Dockerfile
+    container_name: axionis-pos-api
+    volumes:
+      # Default ./data (next to compose file) for local dev. Production: AXIONIS_DATA_DIR=/opt/axionis in .env
+      - ${AXIONIS_DATA_DIR:-./data}:/app/data
+    environment:
+      TZ: Africa/Johannesburg
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Data Source=/app/data/axionis.db
+      App__PdfStoragePath: /app/data/pdfs
+      App__BrandingStoragePath: /app/data/branding
+      App__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      Jwt__Key: ${JWT_KEY:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}
+      Jwt__Issuer: ${JWT_ISSUER:-AxionisPos}
+      Jwt__Audience: ${JWT_AUDIENCE:-AxionisPos}
+      Jwt__SalesExpiresMinutes: ${JWT_SALES_EXPIRES_MIN:-720}
+      PosRules__MaxCartDiscountPercent: ${POS_MAX_CART_DISC_PCT:-25}
+      PosRules__MaxLineDiscountPercent: ${POS_MAX_LINE_DISC_PCT:-50}
+      PosRules__MaxPriceDecreasePercentFromList: ${POS_MAX_PRICE_DOWN_PCT:-15}
+      PosRules__MaxPriceIncreasePercentFromList: ${POS_MAX_PRICE_UP_PCT:-10}
+      Seed__OwnerEmail: ${OWNER_EMAIL}
+      Seed__OwnerPassword: ${OWNER_PASSWORD}
+      Mailgun__ApiKey: ${MAILGUN_API_KEY:-}
+      Mailgun__Domain: ${MAILGUN_DOMAIN:-}
+      Mailgun__From: ${MAILGUN_FROM:-Axionis POS <noreply@example.com>}
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./src/axionis-web
+      dockerfile: Dockerfile
+    container_name: axionis-pos-web
+    ports:
+      - "${WEB_PORT:-9095}:80"
+    depends_on:
+      - api
+    restart: unless-stopped

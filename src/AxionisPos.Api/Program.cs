@@ -1,0 +1,167 @@
+using System.Text;
+using AxionisPos.Api.Data;
+using AxionisPos.Api.Domain;
+using AxionisPos.Api.Options;
+using AxionisPos.Api.Services;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
+builder.Services.Configure<MailgunOptions>(builder.Configuration.GetSection(MailgunOptions.SectionName));
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.Configure<PosRulesOptions>(builder.Configuration.GetSection(PosRulesOptions.SectionName));
+
+var conn = builder.Configuration.GetConnectionString("Default")
+           ?? "Data Source=axionis.db";
+builder.Services.AddDbContext<AxionisDbContext>(o => o.UseSqlite(conn));
+
+builder.Services
+    .AddIdentity<ApplicationUser, IdentityRole>(o =>
+    {
+        o.Password.RequireDigit = true;
+        o.Password.RequiredLength = 10;
+        o.Password.RequireLowercase = true;
+        o.Password.RequireUppercase = true;
+        o.Password.RequireNonAlphanumeric = true;
+        o.User.RequireUniqueEmail = true;
+        o.Lockout.AllowedForNewUsers = true;
+        o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
+        o.Lockout.MaxFailedAccessAttempts = 8;
+    })
+    .AddEntityFrameworkStores<AxionisDbContext>()
+    .AddDefaultTokenProviders();
+
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+          ?? throw new InvalidOperationException("Jwt section missing");
+
+builder.Services.AddAuthentication(o =>
+    {
+        o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(o =>
+    {
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key))
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Axionis POS API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Bearer token",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<IEffectiveMailgunProvider, EffectiveMailgunProvider>();
+builder.Services.AddSingleton<IEffectiveBusinessSettings, EffectiveBusinessSettingsProvider>();
+builder.Services.AddSingleton<IBrandingAssetProvider, BrandingAssetProvider>();
+builder.Services.AddScoped<IEmailSender, MailgunEmailSender>();
+builder.Services.AddScoped<InvoicePdfService>();
+builder.Services.AddScoped<ConsignmentPdfService>();
+builder.Services.AddScoped<QuotePdfService>();
+builder.Services.AddSingleton<SupplierInvoicePdfParser>();
+builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<QuoteService>();
+builder.Services.AddScoped<ImportService>();
+builder.Services.AddScoped<StocktakeService>();
+builder.Services.AddScoped<IPricingService, PricingService>();
+
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("dev", p => p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
+});
+
+var app = builder.Build();
+
+await DbSeeder.SeedAsync(app.Services);
+
+// Wire the static LabelPdfService to use the current uploaded logo when present.
+{
+    var brandingAssets = app.Services.GetRequiredService<IBrandingAssetProvider>();
+    AxionisPos.Api.Services.LabelPdfService.LogoProvider = () => brandingAssets.GetLogoBytes();
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors("dev");
+
+// Global exception logging — stack traces were being swallowed into opaque 500s at the proxy.
+// Log everything and return a JSON body with the exception message so the SPA can surface a
+// useful toast instead of a blank "Could not load…". We keep the stack out of the response.
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("UnhandledException");
+        logger.LogError(ex, "Unhandled exception handling {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
+        if (!ctx.Response.HasStarted)
+        {
+            ctx.Response.Clear();
+            ctx.Response.StatusCode = 500;
+            ctx.Response.ContentType = "application/problem+json";
+            await ctx.Response.WriteAsJsonAsync(new
+            {
+                title = "Server error",
+                detail = ex.Message,
+                type = ex.GetType().Name
+            });
+        }
+    }
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.MapGet("/api/health", () => Results.Text("ok", "text/plain"));
+app.Run();

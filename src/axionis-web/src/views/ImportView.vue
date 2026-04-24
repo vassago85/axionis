@@ -1,0 +1,446 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { http } from '@/api/http'
+import { useToast } from '@/composables/useToast'
+import McPageHeader from '@/components/ui/McPageHeader.vue'
+import McCard from '@/components/ui/McCard.vue'
+import McButton from '@/components/ui/McButton.vue'
+import McField from '@/components/ui/McField.vue'
+import McAlert from '@/components/ui/McAlert.vue'
+import McBadge from '@/components/ui/McBadge.vue'
+import McModal from '@/components/ui/McModal.vue'
+import { ChevronRight, AlertTriangle } from 'lucide-vue-next'
+
+type Preset = {
+  id: string
+  supplierId?: string | null
+  name: string
+  mapping: Record<string, string | undefined>
+}
+type PreviewRow = {
+  rowIndex: number
+  sku: string
+  name: string
+  manufacturer?: string | null
+  itemType?: string | null
+  cost: number
+  sellPrice: number
+  qtyOnHand: number
+  error?: string | null
+  warning?: string | null
+}
+
+const toast = useToast()
+const sheetName = ref('Sheet1')
+const workbookFile = ref<File | null>(null)
+const workbookPreview = ref<PreviewRow[]>([])
+const workbookWarnings = ref<string[]>([])
+const wholesalerFile = ref<File | null>(null)
+const mappingJson = ref(
+  JSON.stringify(
+    { sku: 'SKU', barcode: 'Barcode', name: 'Description', cost: 'Cost', sellPrice: 'RRP', qtyOnHand: 'Qty' },
+    null,
+    2
+  )
+)
+const wholesalerPreview = ref<PreviewRow[]>([])
+const err = ref<string | null>(null)
+const busy = ref(false)
+const presets = ref<Preset[]>([])
+
+const showPresetModal = ref(false)
+const newPresetName = ref('')
+
+function extractApiError(e: unknown): string | null {
+  const anyE = e as { response?: { data?: unknown; status?: number }; message?: string }
+  const data = anyE?.response?.data
+  if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 300)
+  if (data && typeof data === 'object') {
+    const d = data as { title?: string; detail?: string; message?: string; error?: string }
+    const text = d.detail ?? d.title ?? d.message ?? d.error
+    if (text && typeof text === 'string') return text.slice(0, 300)
+  }
+  if (anyE?.response?.status) return `HTTP ${anyE.response.status}`
+  if (anyE?.message) return anyE.message
+  return null
+}
+
+async function loadPresets() {
+  try {
+    const { data } = await http.get<Preset[]>('/api/imports/presets/all')
+    presets.value = data
+  } catch {
+    presets.value = []
+  }
+}
+
+onMounted(async () => {
+  await loadPresets()
+})
+
+function applyPreset(p: Preset) {
+  mappingJson.value = JSON.stringify(p.mapping, null, 2)
+  toast.success(`Applied preset “${p.name}”`)
+}
+
+function openPresetModal() {
+  newPresetName.value = ''
+  showPresetModal.value = true
+}
+
+async function confirmSavePreset() {
+  const name = newPresetName.value.trim()
+  if (!name) return
+  let mapping: Record<string, string | undefined>
+  try {
+    mapping = JSON.parse(mappingJson.value) as Record<string, string | undefined>
+  } catch {
+    err.value = 'Mapping JSON is invalid'
+    toast.error('Mapping JSON is invalid')
+    return
+  }
+  try {
+    await http.post('/api/imports/presets', { supplierId: null, name, mapping })
+    await loadPresets()
+    showPresetModal.value = false
+    toast.success('Preset saved')
+  } catch {
+    toast.error('Could not save preset')
+  }
+}
+
+async function previewWorkbook() {
+  err.value = null
+  if (!workbookFile.value) return
+  busy.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', workbookFile.value)
+    fd.append('sheetName', sheetName.value)
+    fd.append('commit', 'false')
+    const { data } = await http.post<{ preview: PreviewRow[]; warnings: string[] }>('/api/imports/workbook', fd, {
+      timeout: 300000,
+    })
+    workbookPreview.value = data.preview
+    workbookWarnings.value = data.warnings ?? []
+    toast.success('Preview ready — review rows, then commit.')
+  } catch (e: unknown) {
+    const detail = extractApiError(e)
+    err.value = detail ? `Workbook preview failed: ${detail}` : 'Workbook preview failed'
+    toast.error(err.value)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function commitWorkbook() {
+  err.value = null
+  if (!workbookFile.value) return
+  busy.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', workbookFile.value)
+    fd.append('sheetName', sheetName.value)
+    fd.append('commit', 'true')
+    const { data } = await http.post<{ imported: number }>('/api/imports/workbook', fd, {
+      timeout: 300000,
+    })
+    toast.success(`Imported ${data.imported} rows`)
+    workbookPreview.value = []
+  } catch (e: unknown) {
+    const detail = extractApiError(e)
+    err.value = detail ? `Workbook import failed: ${detail}` : 'Workbook import failed'
+    toast.error(err.value)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function previewWholesaler() {
+  err.value = null
+  if (!wholesalerFile.value) return
+  busy.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', wholesalerFile.value)
+    fd.append('mappingJson', mappingJson.value)
+    fd.append('commit', 'false')
+    const { data } = await http.post<{ preview: PreviewRow[] }>('/api/imports/wholesaler', fd)
+    wholesalerPreview.value = data.preview
+    toast.success('Wholesaler preview ready')
+  } catch {
+    err.value = 'Wholesaler preview failed (check mapping JSON matches CSV headers or use column letters A,B,…)'
+    toast.error('Wholesaler preview failed')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function commitWholesaler() {
+  err.value = null
+  if (!wholesalerFile.value) return
+  busy.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', wholesalerFile.value)
+    fd.append('mappingJson', mappingJson.value)
+    fd.append('commit', 'true')
+    const { data } = await http.post<{ imported: number }>('/api/imports/wholesaler', fd)
+    toast.success(`Imported ${data.imported} rows`)
+    wholesalerPreview.value = []
+  } catch {
+    err.value = 'Wholesaler import failed'
+    toast.error('Wholesaler import failed')
+  } finally {
+    busy.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="imp-page">
+    <McPageHeader title="Stock import">
+      <template #default>
+        After importing, open <RouterLink to="/stock">Stock list</RouterLink> to verify. Use <strong>Preview</strong> before
+        <strong>Commit</strong> so you can catch mapping issues. Wholesalers/suppliers can be assigned to products later in stock list.
+      </template>
+    </McPageHeader>
+
+    <McAlert v-if="err" variant="error">{{ err }}</McAlert>
+
+    <div class="imp-steps" aria-hidden="true">
+      <McBadge variant="accent">1</McBadge>
+      <span class="imp-steps__txt">Presets &amp; mapping</span>
+      <span class="imp-steps__sep"><ChevronRight :size="14" /></span>
+      <McBadge variant="neutral">2</McBadge>
+      <span class="imp-steps__txt">File + preview</span>
+      <span class="imp-steps__sep"><ChevronRight :size="14" /></span>
+      <McBadge variant="neutral">3</McBadge>
+      <span class="imp-steps__txt">Commit</span>
+    </div>
+
+    <McCard v-if="presets.length" title="Mapping presets">
+      <p class="imp-lead" style="margin:0 0 0.75rem">Saved column-mapping presets apply to the wholesaler JSON editor below.</p>
+      <div class="imp-presets__btns">
+        <McButton v-for="p in presets" :key="p.id" variant="secondary" type="button" @click="applyPreset(p)">
+          {{ p.name }}
+        </McButton>
+        <McButton variant="secondary" type="button" @click="openPresetModal">Save mapping as preset…</McButton>
+      </div>
+    </McCard>
+    <McCard v-else title="Mapping presets">
+      <p class="imp-lead" style="margin:0 0 0.75rem">No saved presets yet. Edit the mapping JSON below and save it as a preset for reuse.</p>
+      <McButton variant="secondary" type="button" @click="openPresetModal">Save current mapping as preset…</McButton>
+    </McCard>
+
+    <McCard title="Supplier workbook or CSV">
+      <p class="imp-lead">
+        Upload <strong>.xlsx</strong> / <strong>.xlsm</strong> (sheet defaults to <code>Sheet1</code>) or
+        <strong>.csv</strong> with headers in row 1.
+        <a class="imp-link" href="/api/imports/example-csv" download>Download example CSV</a>
+      </p>
+      <McField label="Sheet name (Excel only)" for-id="imp-sheet">
+        <input id="imp-sheet" v-model="sheetName" />
+      </McField>
+      <input
+        type="file"
+        accept=".xlsx,.xlsm,.csv"
+        class="imp-file"
+        @change="workbookFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
+      />
+      <div class="imp-actions">
+        <McButton variant="secondary" type="button" :disabled="busy" @click="previewWorkbook">Preview</McButton>
+        <McButton variant="primary" type="button" :disabled="busy" @click="commitWorkbook">Commit import</McButton>
+      </div>
+      <McAlert v-for="w in workbookWarnings" :key="w" variant="warning">{{ w }}</McAlert>
+      <div v-if="workbookPreview.length" class="imp-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th>Mfr</th>
+              <th>Type</th>
+              <th>Cost</th>
+              <th>Sell</th>
+              <th>Qty</th>
+              <th>Err</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in workbookPreview.slice(0, 80)" :key="r.rowIndex">
+              <td>{{ r.rowIndex }}</td>
+              <td>{{ r.sku }}</td>
+              <td>{{ r.name }}</td>
+              <td>{{ r.manufacturer }}</td>
+              <td>{{ r.itemType }}</td>
+              <td>{{ r.cost }}</td>
+              <td :class="{ 'imp-warn': !!r.warning }">
+                {{ r.sellPrice }}
+                <AlertTriangle v-if="r.warning" :title="r.warning ?? ''" class="imp-warn-ic" :size="14" />
+              </td>
+              <td>{{ r.qtyOnHand }}</td>
+              <td>{{ r.error }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </McCard>
+
+    <McCard title="Wholesaler CSV / Excel">
+      <p class="imp-lead">
+        Column mapping JSON: CSV header names or Excel columns (<code>A</code>, <code>B</code>, …). Adjust to match your
+        file. Uploaded products are not auto-assigned to a wholesaler — assign them from the stock list after import.
+      </p>
+      <textarea v-model="mappingJson" class="imp-json" rows="8" spellcheck="false" />
+      <input
+        type="file"
+        accept=".csv,.xlsx,.xlsm"
+        class="imp-file"
+        @change="wholesalerFile = ($event.target as HTMLInputElement).files?.[0] ?? null"
+      />
+      <div class="imp-actions">
+        <McButton variant="secondary" type="button" :disabled="busy" @click="previewWholesaler">Preview</McButton>
+        <McButton variant="primary" type="button" :disabled="busy" @click="commitWholesaler">Commit import</McButton>
+      </div>
+      <div v-if="wholesalerPreview.length" class="imp-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>SKU</th>
+              <th>Name</th>
+              <th>Mfr</th>
+              <th>Type</th>
+              <th>Cost</th>
+              <th>Sell</th>
+              <th>Qty</th>
+              <th>Err</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in wholesalerPreview.slice(0, 80)" :key="r.rowIndex">
+              <td>{{ r.rowIndex }}</td>
+              <td>{{ r.sku }}</td>
+              <td>{{ r.name }}</td>
+              <td>{{ r.manufacturer }}</td>
+              <td>{{ r.itemType }}</td>
+              <td>{{ r.cost }}</td>
+              <td :class="{ 'imp-warn': !!r.warning }">
+                {{ r.sellPrice }}
+                <AlertTriangle v-if="r.warning" :title="r.warning ?? ''" class="imp-warn-ic" :size="14" />
+              </td>
+              <td>{{ r.qtyOnHand }}</td>
+              <td>{{ r.error }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </McCard>
+
+    <McModal v-model="showPresetModal" title="Save mapping preset">
+      <McField label="Preset name" for-id="imp-preset-name">
+        <input id="imp-preset-name" v-model="newPresetName" type="text" autocomplete="off" @keyup.enter="confirmSavePreset" />
+      </McField>
+      <template #footer>
+        <McButton variant="secondary" type="button" @click="showPresetModal = false">Cancel</McButton>
+        <McButton variant="primary" type="button" :disabled="!newPresetName.trim()" @click="confirmSavePreset">
+          Save
+        </McButton>
+      </template>
+    </McModal>
+  </div>
+</template>
+
+<style scoped>
+.imp-page {
+  min-height: 100%;
+}
+
+.imp-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--ax-app-text-muted, #475569);
+}
+
+.imp-steps__sep {
+  display: inline-flex;
+  align-items: center;
+  color: #d4d2cd;
+}
+
+.imp-presets__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.imp-lead {
+  margin: 0 0 1rem;
+  color: var(--ax-app-text-muted, #475569);
+  line-height: 1.5;
+}
+
+.imp-link {
+  font-weight: 600;
+}
+
+.imp-file {
+  display: block;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.imp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.imp-json {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
+  box-sizing: border-box;
+  background: var(--ax-app-surface, #fff);
+  color: var(--ax-app-text, #0f172a);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.imp-json:focus {
+  outline: none;
+  border-color: var(--ax-accent, #06b6d4);
+  box-shadow: inset 0 0 0 1px var(--ax-accent, #06b6d4);
+}
+
+.imp-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.imp-warn {
+  color: #b71c1c;
+  font-weight: 600;
+}
+
+.imp-warn-ic {
+  cursor: help;
+  margin-left: 0.2rem;
+  vertical-align: middle;
+  display: inline-block;
+}
+</style>
