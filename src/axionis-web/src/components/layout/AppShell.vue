@@ -60,7 +60,7 @@ function logout() {
     />
     <aside class="ax-sidebar" :class="{ 'ax-sidebar--open': sidebarOpen }">
       <div class="ax-sidebar__brand">
-        <img class="ax-sidebar__logo" :src="brandLogo" :alt="businessName" />
+        <img class="ax-sidebar__logo" :src="brandLogo" :alt="businessName" width="140" height="36" />
         <p class="ax-sidebar__tag">Point of sale</p>
       </div>
       <nav class="ax-sidebar__nav" aria-label="Main">
@@ -88,6 +88,7 @@ function logout() {
           <RouterLink class="ax-nav-link" to="/wholesalers" @click="sidebarOpen = false"><Building2 :size="16" />Wholesalers</RouterLink>
           <RouterLink class="ax-nav-link" to="/import" @click="sidebarOpen = false"><Upload :size="16" />Import</RouterLink>
           <RouterLink class="ax-nav-link" to="/reports" @click="sidebarOpen = false"><BarChart3 :size="16" />Reports</RouterLink>
+          <RouterLink class="ax-nav-link" to="/financial-report" @click="sidebarOpen = false"><FileText :size="16" />Financial overview</RouterLink>
           <RouterLink class="ax-nav-link" to="/settings" @click="sidebarOpen = false"><DollarSign :size="16" />Pricing</RouterLink>
           <RouterLink class="ax-nav-link" to="/settings/business" @click="sidebarOpen = false"><SettingsIcon :size="16" />Business</RouterLink>
           <RouterLink class="ax-nav-link" to="/setup" @click="sidebarOpen = false"><Mail :size="16" />Email setup</RouterLink>

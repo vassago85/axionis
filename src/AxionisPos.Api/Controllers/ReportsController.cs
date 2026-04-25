@@ -165,24 +165,32 @@ public class ReportsController : ControllerBase
             .OrderByDescending(i => i.CreatedAt).Take(2000).ToList();
 
         var sb = new StringBuilder();
-        sb.AppendLine("Date,Invoice,Customer,SKU,Description,Qty,Cost Excl,Cost Incl (15% VAT),Sale Price,Line Total,GP");
+        sb.AppendLine("Date,Invoice,Customer,SKU,Description,Qty,Wholesale (ex VAT),Wholesale + VAT,Sale Price,Line Total,Line Discount,Order Discount,GP");
 
-        decimal sumCostIncl = 0, sumSaleTotal = 0, sumLineTotal = 0, sumGp = 0;
+        decimal sumCostExcl = 0, sumCostIncl = 0, sumSaleTotal = 0, sumLineTotal = 0, sumLineDisc = 0, sumOrderDisc = 0, sumGp = 0;
 
         foreach (var inv in list)
         {
             var date = inv.CreatedAt.ToOffset(TimeSpan.FromHours(2)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var sub = inv.SubTotal;
             foreach (var line in inv.Lines)
             {
                 var costExcl = line.CostAtSale > 0 ? line.CostAtSale : (line.Product?.Cost ?? 0);
                 var costIncl = Math.Round(costExcl * 1.15m, 2);
                 var salePrice = line.UnitPrice;
                 var lineTotal = line.LineTotal;
-                var gp = Math.Round(salePrice * line.Quantity - costIncl * line.Quantity - line.LineDiscount, 2);
+                var lineDisc = line.LineDiscount;
+                var orderDiscShare = sub > 0
+                    ? Math.Round(lineTotal / sub * inv.DiscountTotal, 2)
+                    : 0m;
+                var gp = Math.Round((lineTotal - orderDiscShare) / 1.15m - costExcl * line.Quantity, 2);
 
+                sumCostExcl += costExcl * line.Quantity;
                 sumCostIncl += costIncl * line.Quantity;
                 sumSaleTotal += salePrice * line.Quantity;
                 sumLineTotal += lineTotal;
+                sumLineDisc += lineDisc;
+                sumOrderDisc += orderDiscShare;
                 sumGp += gp;
 
                 sb.AppendLine(string.Join(",",
@@ -196,6 +204,8 @@ public class ReportsController : ControllerBase
                     costIncl.ToString("F2", CultureInfo.InvariantCulture),
                     salePrice.ToString("F2", CultureInfo.InvariantCulture),
                     lineTotal.ToString("F2", CultureInfo.InvariantCulture),
+                    lineDisc.ToString("F2", CultureInfo.InvariantCulture),
+                    orderDiscShare.ToString("F2", CultureInfo.InvariantCulture),
                     gp.ToString("F2", CultureInfo.InvariantCulture)));
             }
         }
@@ -203,13 +213,16 @@ public class ReportsController : ControllerBase
         sb.AppendLine();
         sb.AppendLine(string.Join(",",
             "", "", "", "", "TOTALS", "",
-            "", sumCostIncl.ToString("F2", CultureInfo.InvariantCulture),
+            sumCostExcl.ToString("F2", CultureInfo.InvariantCulture),
+            sumCostIncl.ToString("F2", CultureInfo.InvariantCulture),
             sumSaleTotal.ToString("F2", CultureInfo.InvariantCulture),
             sumLineTotal.ToString("F2", CultureInfo.InvariantCulture),
+            sumLineDisc.ToString("F2", CultureInfo.InvariantCulture),
+            sumOrderDisc.ToString("F2", CultureInfo.InvariantCulture),
             sumGp.ToString("F2", CultureInfo.InvariantCulture)));
 
         sb.AppendLine();
-        sb.AppendLine("Date,Invoices,Total Sales,Total Cost Incl,GP");
+        sb.AppendLine("Date,Invoices,Total Sales,Total Discount,Total Wholesale + VAT,GP");
         var dailyGroups = list
             .GroupBy(i => i.CreatedAt.ToOffset(TimeSpan.FromHours(2)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
             .OrderByDescending(g => g.Key);
@@ -217,12 +230,14 @@ public class ReportsController : ControllerBase
         {
             var dayLines = day.SelectMany(i => i.Lines).ToList();
             var daySales = dayLines.Sum(l => l.LineTotal);
+            var dayDiscount = day.Sum(i => i.DiscountTotal);
             var dayCostIncl = dayLines.Sum(l => Math.Round((l.CostAtSale > 0 ? l.CostAtSale : (l.Product?.Cost ?? 0)) * 1.15m, 2) * l.Quantity);
-            var dayGp = daySales - dayCostIncl;
+            var dayGp = Math.Round((daySales - dayDiscount) / 1.15m - dayLines.Sum(l => (l.CostAtSale > 0 ? l.CostAtSale : (l.Product?.Cost ?? 0)) * l.Quantity), 2);
             sb.AppendLine(string.Join(",",
                 day.Key,
                 day.Count().ToString(CultureInfo.InvariantCulture),
                 daySales.ToString("F2", CultureInfo.InvariantCulture),
+                dayDiscount.ToString("F2", CultureInfo.InvariantCulture),
                 dayCostIncl.ToString("F2", CultureInfo.InvariantCulture),
                 dayGp.ToString("F2", CultureInfo.InvariantCulture)));
         }
@@ -353,21 +368,34 @@ public class ReportsController : ControllerBase
         if (to.HasValue) filteredInvoices = filteredInvoices.Where(i => i.CreatedAt <= to.Value);
 
         var invoices = filteredInvoices.ToList();
-        var allSoldLines = invoices.SelectMany(i => i.Lines).ToList();
 
-        var soldInPeriod = allSoldLines
-            .GroupBy(l => l.ProductId)
+        var soldLineRecords = invoices.SelectMany(inv =>
+        {
+            var sub = inv.SubTotal;
+            return inv.Lines.Select(l =>
+            {
+                var orderDiscShare = sub > 0
+                    ? Math.Round(l.LineTotal / sub * inv.DiscountTotal, 2)
+                    : 0m;
+                return new { Line = l, OrderDiscountShare = orderDiscShare };
+            });
+        }).ToList();
+
+        var soldInPeriod = soldLineRecords
+            .GroupBy(x => x.Line.ProductId)
             .Select(g =>
             {
-                var first = g.First();
-                var costEx = g.Sum(l => (l.CostAtSale > 0 ? l.CostAtSale : (l.Product?.Cost ?? 0)) * l.Quantity);
-                var costIncl = g.Sum(l => Math.Round((l.CostAtSale > 0 ? l.CostAtSale : (l.Product?.Cost ?? 0)) * 1.15m, 2) * l.Quantity);
+                var first = g.First().Line;
+                var costEx = g.Sum(x => (x.Line.CostAtSale > 0 ? x.Line.CostAtSale : (x.Line.Product?.Cost ?? 0)) * x.Line.Quantity);
+                var costIncl = g.Sum(x => Math.Round((x.Line.CostAtSale > 0 ? x.Line.CostAtSale : (x.Line.Product?.Cost ?? 0)) * 1.15m, 2) * x.Line.Quantity);
+                var discount = g.Sum(x => x.OrderDiscountShare);
                 return new ProductSoldSummaryDto
                 {
                     Sku = first.Product?.Sku ?? "",
                     Name = first.Description,
-                    QtySold = g.Sum(l => l.Quantity),
-                    Revenue = g.Sum(l => l.LineTotal),
+                    QtySold = g.Sum(x => x.Line.Quantity),
+                    Revenue = g.Sum(x => x.Line.LineTotal),
+                    Discount = discount,
                     CostExVat = costEx,
                     CostInclVat = costIncl
                 };
