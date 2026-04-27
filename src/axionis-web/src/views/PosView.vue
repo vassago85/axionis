@@ -4,8 +4,6 @@ import { http } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { formatZAR } from '@/utils/format'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
-import McPageHeader from '@/components/ui/McPageHeader.vue'
-import McCard from '@/components/ui/McCard.vue'
 import McButton from '@/components/ui/McButton.vue'
 import McField from '@/components/ui/McField.vue'
 import McAlert from '@/components/ui/McAlert.vue'
@@ -132,6 +130,24 @@ function getEffectivePrice(p: Product): { price: number; hasDiscount: boolean } 
   return { price: p.sellPrice, hasDiscount: false }
 }
 
+type RecentInvoice = {
+  id: string
+  invoiceNumber: string
+  customerName: string | null
+  grandTotal: number
+  paymentMethod: string
+  createdAt: string
+  publicToken: string
+}
+const recentInvoices = ref<RecentInvoice[]>([])
+
+async function loadRecentInvoices() {
+  try {
+    const { data } = await http.get<RecentInvoice[]>('/api/invoices/recent?take=5')
+    recentInvoices.value = data
+  } catch { /* best effort */ }
+}
+
 onMounted(async () => {
   try {
     const { data } = await http.get('/api/settings/pos-rules')
@@ -144,11 +160,17 @@ onMounted(async () => {
     const { data } = await http.get<ActivePromotion>('/api/promotions/active')
     if (data.promotionId || data.specials.length) activePromo.value = data
   } catch { /* no active promotion */ }
+  loadRecentInvoices()
 })
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(q, () => {
   if (searchTimer) clearTimeout(searchTimer)
+  if (scannerBufferActive) {
+    results.value = []
+    searchLoading.value = false
+    return
+  }
   searchTimer = setTimeout(() => void runSearch(), 250)
 })
 
@@ -443,6 +465,7 @@ async function doCheckout() {
     showSaleSummary.value = true
     results.value = []
     q.value = ''
+    loadRecentInvoices()
   } catch (e: unknown) {
     const ax = e as { response?: { data?: { error?: string } } }
     err.value = ax.response?.data?.error ?? 'Checkout failed'
@@ -475,9 +498,14 @@ function confirmSpecialOrder() {
   void doCheckout()
 }
 
-function openOrderConfirmationPdf() {
+async function openOrderConfirmationPdf() {
   if (!saleSummary.value) return
-  window.open(`/api/invoices/${saleSummary.value.invoiceId}/order-confirmation-pdf`, '_blank')
+  try {
+    const { data } = await http.get(`/api/invoices/${saleSummary.value.invoiceId}/order-confirmation-pdf`, { responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch { /* silently fail */ }
 }
 
 const searchEmpty = computed(() => !q.value.trim())
@@ -538,64 +566,61 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
       <BarcodeScanner :active="scanOpen" @decode="onScan" />
     </div>
 
-    <!-- Main workspace: conditional results | dominant cart -->
-    <div class="pos-main" :class="{ 'pos-main--no-results': !q.trim() }">
-      <!-- Results panel: only when user is actively searching -->
-      <aside v-if="q.trim()" class="pos-main__results">
-        <div class="pos-panel">
-          <div class="pos-panel__head">
-            <span>Results</span>
-            <span class="pos-panel__meta" v-if="!searchLoading && results.length">{{ results.length }}</span>
-          </div>
-          <div class="pos-panel__body">
-            <McSkeleton v-if="searchLoading" :lines="4" />
-            <McEmptyState
-              v-else-if="searchNoHits"
-              title="No matches"
-              hint="Try other words — order doesn't matter."
-            />
-            <ul v-else class="pos-results">
-              <li v-for="p in results" :key="p.id" class="pos-result">
-                <div class="pos-result__main">
-                  <p class="pos-result__name">{{ p.name }}</p>
-                  <p class="pos-result__meta">
+    <div class="pos-workspace">
+      <!-- LEFT COLUMN: results + cart + recent invoices -->
+      <div class="pos-workspace__left">
+        <!-- Results panel: only when user is actively searching -->
+        <aside v-if="q.trim()" class="pos-results-aside">
+          <div class="pos-panel">
+            <div class="pos-panel__head">
+              <span>Results</span>
+              <span class="pos-panel__meta" v-if="!searchLoading && results.length">{{ results.length }}</span>
+            </div>
+            <div class="pos-panel__body">
+              <McSkeleton v-if="searchLoading" :lines="4" />
+              <McEmptyState
+                v-else-if="searchNoHits"
+                title="No matches"
+                hint="Try other words — order doesn't matter."
+              />
+              <div v-else class="pos-results-grid">
+                <button
+                  v-for="p in results"
+                  :key="p.id"
+                  type="button"
+                  class="pos-card"
+                  :class="{ 'pos-card--out': !isManager && p.qtyOnHand < 1 }"
+                  :disabled="!isManager && p.qtyOnHand < 1"
+                  @click="addToCart(p)"
+                >
+                  <p class="pos-card__name">{{ p.name }}</p>
+                  <p class="pos-card__meta">
                     <span>{{ p.sku }}</span>
-                    <span v-if="p.barcode">· {{ p.barcode }}</span>
-                    <span
-                      class="pos-result__stock"
-                      :class="{
-                        'pos-result__stock--low': p.qtyOnHand <= 3 && p.qtyOnHand > 0,
-                        'pos-result__stock--out': p.qtyOnHand < 1
-                      }"
-                    >{{ p.qtyOnHand < 1 ? 'Out' : `${p.qtyOnHand} in stock` }}</span>
+                    <span v-if="p.barcode"> · {{ p.barcode }}</span>
                   </p>
-                </div>
-                <div class="pos-result__side">
-                  <div class="pos-result__prices">
-                    <template v-if="getEffectivePrice(p).hasDiscount">
-                      <span class="pos-result__price pos-result__price--sale">{{ formatZAR(getEffectivePrice(p).price) }}</span>
-                      <span class="pos-result__price--was">{{ formatZAR(p.sellPrice) }}</span>
-                    </template>
-                    <span v-else class="pos-result__price">{{ formatZAR(p.sellPrice) }}</span>
+                  <div class="pos-card__foot">
+                    <div class="pos-card__prices">
+                      <template v-if="getEffectivePrice(p).hasDiscount">
+                        <span class="pos-card__price pos-card__price--sale">{{ formatZAR(getEffectivePrice(p).price) }}</span>
+                        <span class="pos-card__price--was">{{ formatZAR(p.sellPrice) }}</span>
+                      </template>
+                      <span v-else class="pos-card__price">{{ formatZAR(p.sellPrice) }}</span>
+                    </div>
+                    <span
+                      class="pos-card__stock"
+                      :class="{
+                        'pos-card__stock--low': p.qtyOnHand <= 3 && p.qtyOnHand > 0,
+                        'pos-card__stock--out': p.qtyOnHand < 1
+                      }"
+                    >{{ p.qtyOnHand < 1 ? 'Out of stock' : `${p.qtyOnHand} in stock` }}</span>
                   </div>
-                  <McButton
-                    variant="primary"
-                    type="button"
-                    dense
-                    :disabled="!isManager && p.qtyOnHand < 1"
-                    @click="addToCart(p)"
-                  >
-                    {{ isManager && p.qtyOnHand < 1 ? 'Special' : 'Add' }}
-                  </McButton>
-                </div>
-              </li>
-            </ul>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <section class="pos-main__cart">
-        <!-- Cart lines: dominant, scrolls internally -->
+        <!-- Cart lines -->
         <div class="pos-panel pos-panel--cart">
           <div class="pos-panel__head">
             <span>Cart</span>
@@ -607,7 +632,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
               title="Scan or search to start"
               hint="Hand scanners are auto-detected — just aim and fire."
             />
-            <table v-else class="pos-cart-table ax-table">
+            <table v-else class="pos-cart-table mc-table">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -625,7 +650,10 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
                   :class="{ 'pos-cart-row--just-added': recentlyAdded.has(l.product.id) }"
                 >
                   <td class="pos-cart-name">
-                    {{ l.product.name }}
+                    <span class="pos-cart-name__title">{{ l.product.name }}</span>
+                    <span class="pos-cart-name__meta">
+                      {{ l.product.sku }}<template v-if="l.product.barcode"> · {{ l.product.barcode }}</template>
+                    </span>
                     <span v-if="l.originalPrice !== l.unitPrice" class="pos-cart-was">was {{ formatZAR(l.originalPrice) }}</span>
                     <McBadge v-if="l.qty > l.product.qtyOnHand" variant="warning">Special order — {{ l.qty - Math.max(0, l.product.qtyOnHand) }} to deliver</McBadge>
                   </td>
@@ -670,13 +698,37 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
           </div>
         </div>
 
-        <!-- Customer + payment: compact -->
-        <div class="pos-panel pos-panel--customer">
+        <!-- Recent invoices -->
+        <div v-if="recentInvoices.length" class="pos-panel pos-panel--recent">
           <div class="pos-panel__head">
-            <span>Customer &amp; payment</span>
+            <span>Recent invoices</span>
           </div>
-          <div class="pos-panel__body">
-            <div class="pos-customer-grid">
+          <div class="pos-panel__body pos-recent-list">
+            <a
+              v-for="inv in recentInvoices"
+              :key="inv.id"
+              class="pos-recent-item"
+              :href="'/#/invoice/' + inv.publicToken"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span class="pos-recent-item__num">{{ inv.invoiceNumber }}</span>
+              <span class="pos-recent-item__who">{{ inv.customerName || '—' }}</span>
+              <span class="pos-recent-item__total">{{ formatZAR(inv.grandTotal) }}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: sticky checkout panel -->
+      <aside class="pos-workspace__right">
+        <div class="pos-checkout">
+          <div class="pos-checkout__head">
+            <span>Checkout</span>
+          </div>
+          <div class="pos-checkout__body">
+            <!-- Customer info -->
+            <div class="pos-checkout__group">
               <McField label="Customer name" for-id="cust-name">
                 <input id="cust-name" v-model="customerName" type="text" autocomplete="name" />
               </McField>
@@ -690,79 +742,89 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
               <McField label="Customer type" for-id="cust-type">
                 <input id="cust-type" v-model="customerType" placeholder="e.g. ENT" />
               </McField>
-              <McField label="Payment" for-id="pay-meth">
-                <select id="pay-meth" v-model="paymentMethod">
-                  <option>Card</option>
-                  <option>Cash</option>
-                  <option>EFT</option>
-                </select>
-              </McField>
-              <McField v-if="isManager" label="Order discount (R)" for-id="order-disc">
+              <div class="pos-checkout__inline">
+                <McCheckbox v-model="sendEmail" label="Email invoice link" />
+                <button type="button" class="btn-link-toggle" @click="showBusinessFields = !showBusinessFields">
+                  <component :is="showBusinessFields ? ChevronDown : ChevronRight" :size="14" />
+                  {{ showBusinessFields ? 'Hide' : 'Add' }} business details
+                </button>
+              </div>
+              <div v-if="showBusinessFields" class="pos-checkout__business">
+                <McField label="Company name" for-id="cust-company">
+                  <input id="cust-company" v-model="customerCompany" type="text" placeholder="Business name" />
+                </McField>
+                <McField label="VAT number" for-id="cust-vat">
+                  <input id="cust-vat" v-model="customerVatNumber" type="text" placeholder="e.g. 4123456789" />
+                </McField>
+                <McField label="Business address" for-id="cust-addr">
+                  <textarea id="cust-addr" v-model="customerAddress" rows="2" placeholder="Street, City, Postal code" />
+                </McField>
+              </div>
+            </div>
+
+            <!-- Payment method as button group -->
+            <div class="pos-checkout__group">
+              <div class="pos-checkout__label">Payment method</div>
+              <div class="pos-pay-group" role="group" aria-label="Payment method">
+                <button
+                  v-for="method in ['Card', 'Cash', 'EFT']"
+                  :key="method"
+                  type="button"
+                  class="pos-pay-btn"
+                  :class="{ 'pos-pay-btn--on': paymentMethod === method }"
+                  @click="paymentMethod = method"
+                >{{ method }}</button>
+              </div>
+            </div>
+
+            <!-- Manager: order discount -->
+            <div v-if="isManager" class="pos-checkout__group">
+              <McField label="Order discount (R)" for-id="order-disc">
                 <input id="order-disc" v-model.number="discountTotal" type="number" step="0.01" min="0" />
               </McField>
             </div>
-            <div class="pos-customer-extras">
-              <McCheckbox v-model="sendEmail" label="Email invoice link" />
-              <button type="button" class="btn-link-toggle" @click="showBusinessFields = !showBusinessFields">
-                <component :is="showBusinessFields ? ChevronDown : ChevronRight" :size="14" />
-                {{ showBusinessFields ? 'Hide' : 'Add' }} business / VAT details
-              </button>
-            </div>
-            <div v-if="showBusinessFields" class="pos-customer-grid pos-customer-grid--extra">
-              <McField label="Company name" for-id="cust-company">
-                <input id="cust-company" v-model="customerCompany" type="text" placeholder="Business name" />
-              </McField>
-              <McField label="Company VAT number" for-id="cust-vat">
-                <input id="cust-vat" v-model="customerVatNumber" type="text" placeholder="e.g. 4123456789" />
-              </McField>
-              <McField label="Business address" for-id="cust-addr" class="span-full">
-                <textarea id="cust-addr" v-model="customerAddress" rows="2" placeholder="Street, City, Postal code" />
-              </McField>
-            </div>
-          </div>
-        </div>
 
-        <!-- Sticky totals + checkout: always visible -->
-        <div class="pos-foot">
-          <div class="pos-totals" :class="{ 'pos-totals--pulse': totalPulse }">
-            <div class="pos-totals__rows">
+            <!-- Totals -->
+            <div class="pos-totals" :class="{ 'pos-totals--pulse': totalPulse }">
               <div class="pos-totals__row">
                 <span>Subtotal</span>
                 <strong>{{ formatZAR(subTotal) }}</strong>
               </div>
               <div v-if="isManager && discountTotal > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>After order discount</span>
-                <strong>{{ formatZAR(grandPreview) }}</strong>
+                <span>Discount</span>
+                <strong>− {{ formatZAR(discountTotal) }}</strong>
               </div>
               <div v-if="grandPreview > 0" class="pos-totals__row pos-totals__row--muted">
                 <span>Incl. VAT (15%)</span>
                 <span>{{ formatZAR(vatAmount) }}</span>
               </div>
+              <div class="pos-totals__grand">
+                <span>Total due</span>
+                <strong>{{ formatZAR(grandPreview) }}</strong>
+              </div>
             </div>
-            <div class="pos-totals__grand">
-              <span>Total due</span>
-              <strong>{{ formatZAR(grandPreview) }}</strong>
-            </div>
+
+            <McAlert v-if="belowCostWarning" variant="warning" class="pos-checkout__warn">{{ belowCostWarning }}</McAlert>
+
+            <McButton
+              variant="primary"
+              type="button"
+              block
+              :disabled="busy || !cart.length"
+              class="pos-checkout-btn"
+              @click="requestCheckout"
+            >
+              <McSpinner v-if="busy" />
+              <span v-else>Complete sale</span>
+            </McButton>
           </div>
-          <McAlert v-if="belowCostWarning" variant="warning" class="pos-foot__warn">{{ belowCostWarning }}</McAlert>
-          <McButton
-            variant="primary"
-            type="button"
-            block
-            :disabled="busy || !cart.length"
-            class="pos-checkout-btn"
-            @click="requestCheckout"
-          >
-            <McSpinner v-if="busy" />
-            <span v-else>Complete sale</span>
-          </McButton>
         </div>
-      </section>
+      </aside>
     </div>
 
     <McModal v-model="showBelowCostModal" title="Below cost">
       <p>{{ belowCostWarning }}</p>
-      <p class="ax-text-muted" style="margin-bottom: 0; font-size: 0.9rem">Continue only if you intend to approve this sale.</p>
+      <p class="mc-text-muted" style="margin-bottom: 0; font-size: 0.9rem">Continue only if you intend to approve this sale.</p>
       <template #footer>
         <McButton variant="secondary" type="button" @click="showBelowCostModal = false">Cancel</McButton>
         <McButton variant="primary" type="button" :disabled="busy" @click="doCheckout">Proceed</McButton>
@@ -790,7 +852,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
             <span class="sale-summary__method">{{ saleSummary.paymentMethod }}</span>
           </div>
 
-          <table class="ax-table sale-summary__table">
+          <table class="mc-table sale-summary__table">
             <thead>
               <tr>
                 <th>Item</th>
@@ -842,16 +904,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
    ────────────────────────────────────────────────────────────────────── */
 
 .pos-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  /* Fit within the viewport: subtract AppShell chrome (topbar + brand strip +
-     page padding). Values are a close approximation; if the shell chrome
-     changes, the layout still works because children handle their own
-     overflow. Falls back gracefully on older browsers without dvh. */
-  height: calc(100vh - 9rem);
-  height: calc(100dvh - 9rem);
-  min-height: 520px;
+  display: block;
   max-width: 100%;
 }
 
@@ -872,7 +925,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: var(--ax-app-heading, #020617);
+  color: var(--mc-app-heading, #0a0a0c);
 }
 .pos-mode {
   font-size: 0.78rem;
@@ -881,24 +934,24 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   letter-spacing: 0.06em;
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  background: var(--ax-app-surface-muted, #e2e8f0);
-  color: var(--ax-app-text-muted, #475569);
+  background: var(--mc-app-surface-muted, #f0eeea);
+  color: var(--mc-app-text-muted, #5c5a56);
 }
 .pos-mode--manager {
-  background: rgba(6, 182, 212, 0.12);
-  color: #0e7490;
+  background: rgba(244, 122, 32, 0.12);
+  color: #b44a0c;
 }
 .pos-promo-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.75rem;
-  background: rgba(6, 182, 212, 0.08);
-  border: 1px solid rgba(6, 182, 212, 0.25);
+  background: rgba(244, 122, 32, 0.08);
+  border: 1px solid rgba(244, 122, 32, 0.25);
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: var(--ax-app-text-secondary, #1e293b);
+  color: var(--mc-app-text-secondary, #333336);
   margin-left: auto;
 }
 
@@ -913,8 +966,8 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   align-items: center;
   gap: 0.6rem;
   padding: 0.55rem 0.65rem;
-  background: var(--ax-app-surface, #fff);
-  border: 1px solid var(--ax-app-border-soft, #cbd5e1);
+  background: var(--mc-app-surface, #fff);
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
   border-radius: 14px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
@@ -925,17 +978,17 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   flex: 1;
   min-width: 0;
   padding: 0 0.75rem;
-  background: var(--ax-app-surface-muted, #f6f5f1);
+  background: var(--mc-app-surface-muted, #f6f5f1);
   border: 1.5px solid transparent;
   border-radius: 10px;
   transition: border-color 0.12s ease, background 0.12s ease;
 }
 .pos-toolbar__search:focus-within {
-  background: var(--ax-app-surface, #fff);
-  border-color: var(--ax-accent, #06b6d4);
+  background: var(--mc-app-surface, #fff);
+  border-color: var(--mc-accent, #f47a20);
 }
 .pos-toolbar__icon {
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
   flex-shrink: 0;
 }
 .pos-toolbar__input {
@@ -947,10 +1000,10 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   padding: 0.72rem 0.6rem;
   font-size: 1.02rem;
   font-weight: 500;
-  color: var(--ax-app-text, #0f172a);
+  color: var(--mc-app-text, #1a1a1c);
 }
 .pos-toolbar__input::placeholder {
-  color: var(--ax-app-text-muted, #8a877f);
+  color: var(--mc-app-text-muted, #8a877f);
   font-weight: 400;
 }
 .pos-toolbar__spinner {
@@ -963,22 +1016,22 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   align-items: center;
   gap: 0.35rem;
   padding: 0.55rem 0.85rem;
-  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
   border-radius: 10px;
-  background: var(--ax-app-surface, #fff);
+  background: var(--mc-app-surface, #fff);
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--ax-app-text-secondary, #1e293b);
+  color: var(--mc-app-text-secondary, #333336);
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 .pos-toolbar__camera:hover {
-  background: var(--ax-app-surface-muted, #f6f5f1);
+  background: var(--mc-app-surface-muted, #f6f5f1);
 }
 .pos-toolbar__camera--on {
-  background: var(--ax-accent, #06b6d4);
-  border-color: var(--ax-accent, #06b6d4);
+  background: var(--mc-accent, #f47a20);
+  border-color: var(--mc-accent, #f47a20);
   color: #fff;
 }
 
@@ -1011,51 +1064,55 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 
 .pos-camera-wrap {
   padding: 0.85rem;
-  background: var(--ax-app-surface-2, #f8fafc);
+  background: var(--mc-app-surface-2, #f9f8f6);
   border-radius: 12px;
-  border: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border: 1px solid var(--mc-app-border-faint, #eceae5);
 }
 
-/* ── Main workspace grid ──────────────────────────────────────────────── */
-.pos-main {
-  flex: 1;
-  min-height: 0;
+/* ── Two-column workspace ─────────────────────────────────────────────── */
+.pos-workspace {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.85rem;
-  overflow: hidden;
+  gap: 1rem;
+  align-items: start;
+  margin-top: 0.65rem;
 }
+.pos-workspace__left {
+  min-width: 0;
+}
+.pos-workspace__right {
+  min-width: 0;
+}
+.pos-results-aside {
+  margin-bottom: 0.75rem;
+}
+
 @media (min-width: 1100px) {
-  .pos-main {
-    grid-template-columns: minmax(280px, 28fr) minmax(0, 72fr);
+  .pos-workspace {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 1.25rem;
   }
-  .pos-main--no-results {
-    grid-template-columns: minmax(0, 1fr);
+  .pos-workspace__right {
+    position: sticky;
+    top: 4.25rem;
+    align-self: start;
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
   }
 }
-.pos-main__results {
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.pos-main__cart {
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+@media (min-width: 1400px) {
+  .pos-workspace {
+    grid-template-columns: minmax(0, 1fr) 400px;
+  }
 }
 
 /* ── Shared panel styling (replaces McCard at POS-level for density) ── */
 .pos-panel {
-  background: var(--ax-app-surface, #fff);
-  border: 1px solid var(--ax-app-border-soft, #cbd5e1);
+  background: var(--mc-app-surface, #fff);
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
   border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
   overflow: hidden;
+  margin-bottom: 0.75rem;
 }
 .pos-panel__head {
   display: flex;
@@ -1066,17 +1123,18 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ax-app-text-muted, #475569);
-  border-bottom: 1px solid var(--ax-app-border-faint, #e2e8f0);
-  background: var(--ax-app-surface-2, #faf9f6);
+  color: var(--mc-app-text-muted, #5c5a56);
+  border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
+  background: var(--mc-app-surface-2, #faf9f6);
+  flex-shrink: 0;
 }
 .pos-panel__meta {
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.15rem 0.5rem;
   border-radius: 6px;
-  background: var(--ax-app-surface-muted, #e2e8f0);
-  color: var(--ax-app-text-secondary, #1e293b);
+  background: var(--mc-app-surface-muted, #f0eeea);
+  color: var(--mc-app-text-secondary, #333336);
   letter-spacing: normal;
   text-transform: none;
 }
@@ -1085,88 +1143,110 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   min-height: 0;
 }
 .pos-panel__body--scroll {
-  flex: 1;
   overflow-y: auto;
   padding: 0;
 }
 .pos-panel--cart {
-  flex: 1;
-  min-height: 0;
+  min-height: 180px;
 }
 
-/* ── Results list ─────────────────────────────────────────────────────── */
-.pos-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ── Results card grid ────────────────────────────────────────────────── */
+.pos-results-aside .pos-panel__body {
+  background: var(--mc-app-page-bg, #eae8e3);
 }
-.pos-result {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid var(--ax-app-border-faint, #e2e8f0);
-  transition: background 0.12s ease;
+.pos-results-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  padding: 0.55rem;
 }
-.pos-result:last-child { border-bottom: none; }
-.pos-result:hover { background: var(--ax-app-surface-muted, #f6f5f1); }
-.pos-result__main { min-width: 0; }
-.pos-result__name {
-  margin: 0 0 0.2rem;
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: var(--ax-app-text, #0f172a);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+@media (min-width: 480px) and (max-width: 1099px) {
+  .pos-results-grid { grid-template-columns: repeat(2, 1fr); }
 }
-.pos-result__meta {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--ax-app-text-muted, #475569);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-.pos-result__side {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
-}
-.pos-result__prices {
+
+.pos-card {
   display: flex;
   flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.85rem 1rem;
+  background: var(--mc-app-surface-2, #faf9f6);
+  border: 2px solid var(--mc-app-border-soft, #ddd9d3);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, transform 0.1s ease;
+}
+.pos-card:hover:not(:disabled) {
+  border-color: var(--mc-accent, #f47a20);
+  box-shadow: 0 3px 12px rgba(244, 122, 32, 0.18);
+  background: #fff;
+  transform: translateY(-1px);
+}
+.pos-card:active:not(:disabled) {
+  background: rgba(244, 122, 32, 0.08);
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.pos-card--out {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pos-card__name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  color: var(--mc-app-heading, #0a0a0c);
+}
+.pos-card__meta {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--mc-app-text-muted, #5c5a56);
+}
+.pos-card__foot {
+  display: flex;
   align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--mc-app-border-faint, #eceae5);
+}
+.pos-card__prices {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
   line-height: 1.1;
 }
-.pos-result__price {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--ax-app-text, #0f172a);
+.pos-card__price {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--mc-app-heading, #0a0a0c);
 }
-.pos-result__price--sale {
+.pos-card__price--sale {
   color: #dc2626;
 }
-.pos-result__price--was {
-  font-size: 0.72rem;
-  color: var(--ax-app-text-muted, #475569);
+.pos-card__price--was {
+  font-size: 0.74rem;
+  color: var(--mc-app-text-muted, #5c5a56);
   text-decoration: line-through;
 }
-.pos-result__stock {
-  font-size: 0.7rem;
+.pos-card__stock {
+  font-size: 0.68rem;
   font-weight: 700;
   color: #2e7d32;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 0.1rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 5px;
   background: rgba(46, 125, 50, 0.1);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-.pos-result__stock--low { color: #e65100; background: rgba(230, 81, 0, 0.1); }
-.pos-result__stock--out { color: #c62828; background: rgba(198, 40, 40, 0.1); }
+.pos-card__stock--low { color: #e65100; background: rgba(230, 81, 0, 0.1); }
+.pos-card__stock--out { color: #c62828; background: rgba(198, 40, 40, 0.1); }
 
 /* ── Cart table ───────────────────────────────────────────────────────── */
 .pos-cart-table {
@@ -1177,24 +1257,39 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .pos-cart-table thead th {
   position: sticky;
   top: 0;
-  background: var(--ax-app-surface-2, #faf9f6);
+  background: var(--mc-app-surface-2, #faf9f6);
   z-index: 1;
   padding: 0.55rem 0.75rem;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ax-app-text-muted, #475569);
-  border-bottom: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  color: var(--mc-app-text-muted, #5c5a56);
+  border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
 }
 .pos-cart-table tbody td {
   padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
   vertical-align: middle;
 }
 .pos-cart-table tbody tr:last-child td { border-bottom: none; }
 .pos-cart-name {
-  max-width: 18rem;
+  max-width: 22rem;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.25;
+}
+.pos-cart-name__title {
+  font-weight: 700;
+  color: var(--mc-app-heading, #0a0a0c);
+  font-size: 0.92rem;
+}
+.pos-cart-name__meta {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--mc-app-text-muted, #5c5a56);
+  letter-spacing: 0.01em;
 }
 .pos-cart-row--just-added td {
   animation: pos-row-flash 900ms ease-out;
@@ -1208,10 +1303,10 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .pos-stepper {
   display: inline-flex;
   align-items: center;
-  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
   border-radius: 10px;
   overflow: hidden;
-  background: var(--ax-app-surface, #fff);
+  background: var(--mc-app-surface, #fff);
 }
 .pos-stepper__btn {
   display: inline-flex;
@@ -1220,13 +1315,13 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   min-width: 36px;
   min-height: 36px;
   border: none;
-  background: var(--ax-app-surface-muted, #e2e8f0);
+  background: var(--mc-app-surface-muted, #f0eeea);
   font-weight: 700;
-  color: var(--ax-app-text-secondary, #1e293b);
+  color: var(--mc-app-text-secondary, #333336);
   cursor: pointer;
   transition: background 0.12s ease;
 }
-.pos-stepper__btn:hover { background: var(--ax-app-border-faint, #e2e8f0); }
+.pos-stepper__btn:hover { background: var(--mc-app-border-faint, #eceae5); }
 .pos-stepper__val {
   min-width: 2.1rem;
   text-align: center;
@@ -1239,15 +1334,15 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   min-height: 36px;
   padding: 0.3rem 0.5rem;
   border-radius: 8px;
-  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
   font-size: 0.88rem;
   box-sizing: border-box;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .pos-cart-input:focus {
   outline: none;
-  border-color: var(--ax-accent, #06b6d4);
-  box-shadow: inset 0 0 0 1px var(--ax-accent, #06b6d4);
+  border-color: var(--mc-accent, #f47a20);
+  box-shadow: inset 0 0 0 1px var(--mc-accent, #f47a20);
 }
 .pos-disc-group {
   display: flex;
@@ -1259,10 +1354,10 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   min-height: 36px;
   padding: 0 0.2rem;
   border-radius: 8px;
-  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
   font-size: 0.8rem;
   text-align: center;
-  background: var(--ax-app-surface-muted, #e2e8f0);
+  background: var(--mc-app-surface-muted, #f0eeea);
   cursor: pointer;
 }
 .pos-disc-group .pos-cart-input { width: 3.8rem; }
@@ -1272,29 +1367,101 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Customer + payment panel ─────────────────────────────────────────── */
-.pos-customer-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0 1rem;
-  max-width: 100%;
+/* ── Checkout panel (right column, sticky on desktop) ─────────────────── */
+.pos-checkout {
+  background: var(--mc-app-surface, #fff);
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
-@media (min-width: 720px) {
-  .pos-customer-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-  .pos-customer-grid .span-full { grid-column: 1 / -1; }
+.pos-checkout__head {
+  padding: 0.6rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mc-app-text-muted, #5c5a56);
+  border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
+  background: var(--mc-app-surface-2, #faf9f6);
 }
-.pos-customer-grid--extra { margin-top: 0.25rem; }
-.pos-customer-extras {
+.pos-checkout__body {
+  padding: 0.85rem 1rem 1rem;
   display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.pos-checkout__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.pos-checkout__group + .pos-checkout__group {
+  border-top: 1px solid var(--mc-app-border-faint, #eceae5);
+  padding-top: 0.85rem;
+}
+.pos-checkout__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mc-app-text-muted, #5c5a56);
+}
+.pos-checkout__inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.35rem;
 }
-.pos-email-wrap { position: relative; }
+.pos-checkout__business {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+.pos-checkout :deep(input[type='text']),
+.pos-checkout :deep(input[type='email']),
+.pos-checkout :deep(input[type='number']),
+.pos-checkout :deep(select),
+.pos-checkout :deep(textarea) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.pos-checkout__warn { margin: 0; }
+
+/* Payment method button group */
+.pos-pay-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.pos-pay-btn {
+  appearance: none;
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
+  background: var(--mc-app-surface, #fff);
+  color: var(--mc-app-text-secondary, #333336);
+  border-radius: 10px;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.pos-pay-btn:hover {
+  border-color: var(--mc-accent, #f47a20);
+  background: rgba(244, 122, 32, 0.05);
+}
+.pos-pay-btn--on {
+  background: var(--mc-accent, #f47a20);
+  border-color: var(--mc-accent, #f47a20);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(244, 122, 32, 0.35);
+}
+
+.pos-email-wrap { position: relative; width: 100%; }
 .pos-email-spinner {
   position: absolute;
   right: 8px;
@@ -1304,7 +1471,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   height: 16px;
 }
 .pos-email-match {
-  color: var(--ax-accent, #06b6d4);
+  color: var(--mc-accent, #f47a20);
   font-size: 0.78rem;
 }
 .btn-link-toggle {
@@ -1313,45 +1480,82 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   gap: 0.25rem;
   background: none;
   border: none;
-  color: var(--ax-accent, #06b6d4);
+  color: var(--mc-accent, #f47a20);
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0;
   text-decoration: underline;
 }
 
-/* ── Sticky totals + checkout ─────────────────────────────────────────── */
-.pos-foot {
+/* ── Recent invoices panel ──────────────────────────────────────────── */
+.pos-panel--recent {
+  margin-top: 0.5rem;
+  background: var(--mc-app-surface, #fff);
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.pos-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--mc-text-muted, #7a7874);
+  border-bottom: 1px solid var(--mc-app-border-soft, #ddd9d3);
+}
+.pos-recent-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  position: sticky;
-  bottom: 0;
-  padding-top: 0.2rem;
-  background: linear-gradient(180deg, transparent 0%, var(--ax-app-page-bg, #f1f5f9) 20%);
-  z-index: 3;
-  flex-shrink: 0;
 }
+.pos-recent-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.84rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--mc-app-border-soft, #eceae6);
+  transition: background 0.15s ease;
+}
+.pos-recent-item:last-child { border-bottom: none; }
+.pos-recent-item:hover { background: rgba(244, 122, 32, 0.06); }
+.pos-recent-item__num {
+  font-weight: 600;
+  color: var(--mc-accent, #f47a20);
+  white-space: nowrap;
+}
+.pos-recent-item__who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mc-text-muted, #7a7874);
+}
+.pos-recent-item__total {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Totals (inside checkout panel) ───────────────────────────────────── */
 .pos-totals {
   display: flex;
-  align-items: stretch;
-  gap: 1rem;
-  background: var(--ax-app-surface, #fff);
-  border: 1px solid var(--ax-app-border-soft, #cbd5e1);
-  border-radius: 14px;
-  padding: 0.8rem 1.15rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.85rem 0.85rem;
+  background: var(--mc-app-surface-2, #faf9f6);
+  border: 1px solid var(--mc-app-border-faint, #eceae5);
+  border-radius: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: box-shadow 0.3s ease;
 }
 .pos-totals--pulse {
-  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.35), 0 10px 30px rgba(0, 0, 0, 0.08);
-}
-.pos-totals__rows {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.1rem;
+  box-shadow: 0 0 0 2px rgba(244, 122, 32, 0.35);
 }
 .pos-totals__row {
   display: flex;
@@ -1359,37 +1563,34 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   align-items: baseline;
   gap: 1rem;
   font-size: 0.88rem;
-  color: var(--ax-app-text-secondary, #1e293b);
-  font-variant-numeric: tabular-nums;
+  color: var(--mc-app-text-secondary, #333336);
 }
 .pos-totals__row--muted {
-  color: var(--ax-app-text-muted, #475569);
-  font-size: 0.82rem;
+  color: var(--mc-app-text-muted, #5c5a56);
+  font-size: 0.8rem;
 }
 .pos-totals__grand {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-end;
-  padding-left: 1rem;
-  border-left: 3px solid var(--ax-accent, #06b6d4);
-  font-variant-numeric: tabular-nums;
-  min-width: 9rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.55rem;
+  margin-top: 0.4rem;
+  border-top: 2px solid var(--mc-accent, #f47a20);
 }
 .pos-totals__grand span {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text, #1a1a1c);
 }
 .pos-totals__grand strong {
-  font-size: 1.6rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  color: var(--ax-app-heading, #020617);
-  line-height: 1.1;
+  color: var(--mc-app-heading, #0a0a0c);
+  line-height: 1.05;
 }
-.pos-foot__warn { margin: 0; }
 
 .pos-checkout-btn {
   min-height: 52px;
@@ -1400,7 +1601,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .pos-cart-was {
   display: block;
   font-size: 0.72rem;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
   text-decoration: line-through;
   font-weight: 400;
 }
@@ -1415,8 +1616,8 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .sale-summary__invoice { font-weight: 700; font-size: 1.1rem; }
 .sale-summary__method {
   font-size: 0.9rem;
-  color: var(--ax-app-text-muted, #475569);
-  background: var(--ax-app-surface-alt, #f5f4f0);
+  color: var(--mc-app-text-muted, #5c5a56);
+  background: var(--mc-app-surface-alt, #f5f4f0);
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
 }
@@ -1424,18 +1625,15 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .sale-summary__detail {
   margin: 0.25rem 0;
   font-size: 0.9rem;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
 }
 
 /* ── Tablet: stack results above cart ─────────────────────────────────── */
 @media (max-width: 1099px) {
-  .pos-shell { height: auto; }
-  .pos-main { overflow: visible; }
-  .pos-main__results,
-  .pos-main__cart { min-height: auto; }
-  .pos-panel--cart { flex: none; }
   .pos-panel__body--scroll { max-height: 55vh; }
-  .pos-foot { position: static; background: none; }
+}
+@media (max-width: 720px) {
+  .pos-pay-group { grid-template-columns: 1fr 1fr 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,6 +14,7 @@ import McSpinner from '@/components/ui/McSpinner.vue'
 import McEmptyState from '@/components/ui/McEmptyState.vue'
 import McModal from '@/components/ui/McModal.vue'
 import McCheckbox from '@/components/ui/McCheckbox.vue'
+import McFilterToolbar from '@/components/ui/McFilterToolbar.vue'
 import { AlertTriangle, MoreHorizontal, X, Star } from 'lucide-vue-next'
 
 type Supplier = { id: string; name: string }
@@ -29,6 +30,8 @@ type Product = {
   supplierId?: string | null
   supplierName?: string | null
   cost?: number | null
+  supplierDiscountPercent?: number
+  effectiveCost?: number | null
   sellPrice: number
   qtyOnHand: number
   qtyConsignment: number
@@ -87,6 +90,8 @@ function toggleActionsMenu(id: string) {
 const canManage = computed(() => auth.hasRole('Admin', 'Owner', 'Dev'))
 const canExport = canManage
 const filterSpecials = ref(false)
+const filterSupplierId = ref<string>('')
+const filterInStockOnly = ref(false)
 const pageLabel = computed(() => {
   if (!page.value) return ''
   const from = page.value.total === 0 ? 0 : page.value.skip + 1
@@ -94,8 +99,14 @@ const pageLabel = computed(() => {
   return `${from}–${to} of ${page.value.total}`
 })
 
+const visibleItems = computed(() => {
+  const items = page.value?.items ?? []
+  if (!filterInStockOnly.value) return items
+  return items.filter((p) => p.qtyOnHand + p.qtyConsignment > 0)
+})
+
 let debounce: ReturnType<typeof setTimeout> | null = null
-watch([q, includeInactive], () => {
+watch([q, includeInactive, filterSupplierId], () => {
   skip.value = 0
   if (debounce) clearTimeout(debounce)
   debounce = setTimeout(() => void load(), 300)
@@ -126,6 +137,7 @@ async function load() {
         q: q.value.trim() || undefined,
         includeInactive: includeInactive.value,
         hasSpecial: filterSpecials.value || undefined,
+        supplierId: filterSupplierId.value || undefined,
         skip: skip.value,
         take: pageSize.value
       }
@@ -178,6 +190,7 @@ const form = ref({
   itemType: '',
   supplierId: '' as string,
   cost: 0,
+  supplierDiscountPercent: 0,
   sellPrice: 0,
   qtyOnHand: 0,
   pricingMethod: 'default' as 'default' | 'custom_markup' | 'fixed_price',
@@ -189,6 +202,13 @@ const form = ref({
 const formBusy = ref(false)
 const formErr = ref<string | null>(null)
 const sellPriceManual = ref(false)
+
+const formEffectiveCost = computed(() => {
+  const cost = Number(form.value.cost) || 0
+  const disc = Number(form.value.supplierDiscountPercent) || 0
+  if (cost <= 0) return 0
+  return Math.round(cost * (1 - disc / 100) * 100) / 100
+})
 
 // Only Owner/Dev can correct qty-on-hand from the edit drawer (audited via adjust-stock endpoint).
 // Admin/Sales must go through Stocktake or consignment receipts instead.
@@ -244,6 +264,7 @@ function openEdit(p: Product) {
     itemType: p.itemType ?? '',
     supplierId: p.supplierId ?? '',
     cost: p.cost ?? 0,
+    supplierDiscountPercent: p.supplierDiscountPercent ?? 0,
     sellPrice: p.sellPrice,
     qtyOnHand: p.qtyOnHand,
     pricingMethod: (p.pricingMethod as 'default' | 'custom_markup' | 'fixed_price') ?? 'default',
@@ -333,6 +354,7 @@ async function saveProduct() {
       itemType: form.value.itemType || null,
       supplierId: form.value.supplierId || null,
       cost: costVal > 0 ? costVal : null,
+      supplierDiscountPercent: Number(form.value.supplierDiscountPercent) || 0,
       sellPrice: sellVal > 0 ? sellVal : null,
       pricingMethod: form.value.pricingMethod,
       customMarkupPercent: form.value.customMarkupPercent,
@@ -666,25 +688,44 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
 
     <McAlert v-if="err" variant="error">{{ err }}</McAlert>
 
-    <McCard :padded="false" title="Filters">
-      <div class="stock-toolbar">
-        <div class="stock-toolbar__search">
-          <McField label="Search" for-id="stock-q">
-            <input
-              id="stock-q"
-              v-model="q"
-              type="search"
-              placeholder="Any words, any order — matches name, SKU, barcode, category, wholesaler…"
-            />
-          </McField>
-        </div>
-        <label class="stock-toolbar__check">
-          <input v-model="includeInactive" type="checkbox" />
-          Include inactive
-        </label>
-        <div class="stock-toolbar__page">
-          <span class="stock-toolbar__label">Rows</span>
-          <select v-model.number="pageSize" class="stock-toolbar__select">
+    <McFilterToolbar sticky>
+      <input
+        v-model="q"
+        type="search"
+        placeholder="Search name, SKU, barcode, category, wholesaler…"
+        class="stock-filter-search"
+        aria-label="Search inventory"
+      />
+      <select v-model="filterSupplierId" class="stock-filter-supplier" aria-label="Filter by wholesaler">
+        <option value="">All wholesalers</option>
+        <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
+      </select>
+      <button
+        type="button"
+        class="stock-filter-toggle"
+        :class="{ 'stock-filter-toggle--on': filterInStockOnly }"
+        @click="filterInStockOnly = !filterInStockOnly"
+      >In stock</button>
+      <button
+        type="button"
+        class="stock-filter-toggle"
+        :class="{ 'stock-filter-toggle--on': filterSpecials }"
+        @click="filterSpecials = !filterSpecials"
+      >
+        <component :is="filterSpecials ? X : Star" :size="14" />
+        Specials
+      </button>
+      <button
+        type="button"
+        class="stock-filter-toggle"
+        :class="{ 'stock-filter-toggle--on': includeInactive }"
+        @click="includeInactive = !includeInactive"
+      >Inactive</button>
+
+      <template #actions>
+        <div class="stock-filter-rows">
+          <span class="stock-filter-rows__label">Rows</span>
+          <select v-model.number="pageSize" aria-label="Rows per page">
             <option :value="100">100</option>
             <option :value="250">250</option>
             <option :value="500">500</option>
@@ -692,42 +733,27 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
             <option :value="5000">5000</option>
           </select>
         </div>
-        <div class="stock-toolbar__nav">
-          <McButton variant="secondary" type="button" :disabled="busy || skip <= 0" @click="prevPage">Previous</McButton>
+        <div class="stock-filter-pager">
+          <McButton variant="secondary" dense type="button" :disabled="busy || skip <= 0" @click="prevPage">Prev</McButton>
+          <span class="stock-filter-pager__meta">{{ pageLabel }}</span>
           <McButton
             variant="secondary"
+            dense
             type="button"
             :disabled="busy || !page || skip + page.take >= page.total"
             @click="nextPage"
-          >
-            Next
-          </McButton>
-          <span class="stock-toolbar__meta">{{ pageLabel }}</span>
+          >Next</McButton>
           <McSpinner v-if="busy" />
         </div>
-      </div>
-    </McCard>
-
-    <div class="stock-specials-bar">
-      <button
-        type="button"
-        class="stock-specials-chip"
-        :class="{ 'stock-specials-chip--active': filterSpecials }"
-        @click="filterSpecials = !filterSpecials"
-      >
-        <span class="stock-specials-chip__icon"><component :is="filterSpecials ? X : Star" :size="14" /></span>
-        {{ filterSpecials ? 'Showing specials only — click to clear' : 'Show products with specials' }}
-        <span v-if="filterSpecials && page" class="stock-specials-chip__count">({{ page.total }})</span>
-      </button>
-    </div>
+      </template>
+    </McFilterToolbar>
 
     <McCard :padded="false" title="Products">
       <div class="stock-table-wrap">
-        <table v-if="page?.items.length" class="stock-table ax-table">
+        <table v-if="visibleItems.length" class="stock-table mc-table">
           <thead>
             <tr>
-              <th>SKU</th>
-              <th>Name</th>
+              <th>Product</th>
               <th>Wholesaler</th>
               <th class="text-right">Cost</th>
               <th class="text-right">Sell</th>
@@ -739,11 +765,24 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
             </tr>
           </thead>
           <tbody>
-            <tr v-for="p in page.items" :key="p.id">
-              <td class="stock-mono">{{ p.sku }}</td>
-              <td class="stock-name">{{ p.name }}</td>
+            <tr v-for="p in visibleItems" :key="p.id">
+              <td class="stock-product">
+                <div class="stock-product__name">{{ p.name }}</div>
+                <div class="stock-product__meta">
+                  <span class="stock-product__sku">{{ p.sku }}</span>
+                  <span v-if="p.barcode" class="stock-product__barcode">· {{ p.barcode }}</span>
+                </div>
+              </td>
               <td>{{ p.supplierName ?? '—' }}</td>
-              <td class="text-right">{{ p.cost != null && p.cost > 0 ? formatZAR(p.cost) : '—' }}</td>
+              <td class="text-right">
+                <template v-if="p.cost != null && p.cost > 0">
+                  {{ formatZAR(p.cost) }}
+                  <span v-if="p.supplierDiscountPercent && p.supplierDiscountPercent > 0" class="stock-supplier-disc">
+                    &rarr; {{ formatZAR(p.effectiveCost ?? p.cost) }} (−{{ p.supplierDiscountPercent }}%)
+                  </span>
+                </template>
+                <template v-else>—</template>
+              </td>
               <td class="text-right" :class="{ 'stock-warn': !!p.warning }">
                 {{ formatZAR(p.sellPrice) }}
                 <AlertTriangle v-if="p.warning" :title="p.warning" class="stock-warn-icon" :size="14" />
@@ -756,14 +795,20 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
                 <span v-else class="stock-qty--none">—</span>
               </td>
               <td class="text-center">
-                <strong :class="{ 'stock-qty--low': p.qtyOnHand <= 3 }">{{ p.qtyOnHand }}</strong>
+                <strong :class="{ 'stock-qty--low': p.qtyOnHand <= 3 && p.qtyOnHand > 0, 'stock-qty--out': p.qtyOnHand < 1 }">{{ p.qtyOnHand }}</strong>
               </td>
               <td class="text-center">
                 <strong v-if="p.qtyConsignment > 0" class="stock-qty--consign">{{ p.qtyConsignment }}</strong>
                 <span v-else class="stock-qty--none">—</span>
               </td>
               <td>
-                <McBadge :variant="p.active ? 'success' : 'neutral'">{{ p.active ? 'Active' : 'Inactive' }}</McBadge>
+                <div class="stock-status-stack">
+                  <McBadge :variant="p.active ? 'success' : 'neutral'">{{ p.active ? 'Active' : 'Inactive' }}</McBadge>
+                  <McBadge v-if="p.qtyOnHand < 1" variant="danger">Out</McBadge>
+                  <McBadge v-else-if="p.qtyOnHand <= 3" variant="warning">Low</McBadge>
+                  <McBadge v-if="p.specialPrice != null && p.specialPrice !== p.sellPrice" variant="accent">Special</McBadge>
+                  <McBadge v-if="p.qtyConsignment > 0" variant="neutral">Consign</McBadge>
+                </div>
               </td>
               <td v-if="canManage" class="stock-actions">
                 <McButton variant="secondary" dense type="button" @click="openEdit(p)">Edit</McButton>
@@ -845,6 +890,12 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
               <McField label="Cost ex VAT (R)" for-id="f-cost">
                 <input id="f-cost" v-model.number="form.cost" type="number" step="0.01" min="0" />
               </McField>
+              <McField label="Supplier discount %" for-id="f-supdisc" hint="0 = no discount">
+                <input id="f-supdisc" v-model.number="form.supplierDiscountPercent" type="number" step="1" min="0" max="100" />
+              </McField>
+              <div v-if="form.supplierDiscountPercent > 0" class="stock-drawer__effective-cost">
+                Effective cost: <strong>{{ formatZAR(formEffectiveCost) }}</strong>
+              </div>
               <McField label="Sell price (R)" for-id="f-sell" :hint="!editId && !sellPriceManual ? 'Auto-calculated from cost' : ''">
                 <input id="f-sell" v-model.number="form.sellPrice" type="number" step="0.01" min="0" @input="sellPriceManual = true" />
               </McField>
@@ -1028,7 +1079,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
               <McSpinner /><span>Loading…</span>
             </div>
             <McEmptyState v-else-if="!historyReceipts.length" title="No stock movements" hint="Use the Receive, Move, or Return actions to create entries." />
-            <table v-else class="ax-table history-table">
+            <table v-else class="mc-table history-table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -1061,7 +1112,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
     <McModal v-model="showLabelModal" title="Print product label">
       <p style="margin:0 0 0.75rem;font-size:0.9rem">
         <strong>{{ labelProduct?.name }}</strong><br />
-        <span style="color:var(--ax-app-text-muted)">{{ labelProduct?.sku }}</span>
+        <span style="color:var(--mc-app-text-muted)">{{ labelProduct?.sku }}</span>
         <span style="margin-left:0.5rem">{{ labelProduct ? formatZAR(labelProduct.sellPrice) : '' }}</span>
       </p>
       <McField label="Number of copies" for-id="lbl-copies" hint="Brother QL-800 · DK-22205 62mm">
@@ -1129,11 +1180,11 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
 
 <style scoped>
 .special-card {
-  border: 1px solid var(--ax-app-border-soft, #cbd5e1);
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
   border-radius: 10px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
-  background: var(--ax-app-surface-2, #f8fafc);
+  background: var(--mc-app-surface-2, #f9f8f6);
 }
 
 .special-card--inactive {
@@ -1157,122 +1208,76 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   gap: 0.5rem;
 }
 
-.stock-specials-bar {
-  margin-bottom: 1rem;
-}
-
-.stock-specials-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  border: 2px solid var(--ax-app-border-soft, #cbd5e1);
-  background: var(--ax-app-surface, #fff);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ax-app-text-muted, #475569);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.stock-specials-chip:hover {
-  border-color: var(--ax-accent, #06b6d4);
-  color: var(--ax-accent, #06b6d4);
-}
-
-.stock-specials-chip--active {
-  border-color: var(--ax-accent, #06b6d4);
-  background: var(--ax-accent, #06b6d4);
-  color: #fff;
-}
-
-.stock-specials-chip--active:hover {
-  background: #0891b2;
-  border-color: #0891b2;
-  color: #fff;
-}
-
-.stock-specials-chip__icon {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.stock-specials-chip__count {
-  font-weight: 400;
-  opacity: 0.85;
-}
-
 .stock-page {
   min-height: 100%;
 }
 
-.stock-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem;
-  padding: 1.15rem var(--ax-app-pad-card, 1.75rem);
+/* ── Filter toolbar inputs ────────────────────────────────────────────── */
+.stock-filter-search {
+  flex: 1 1 240px;
+  min-width: 200px;
 }
-
-.stock-toolbar__search {
-  flex: 1 1 220px;
+.stock-filter-supplier {
+  flex: 0 1 200px;
+  min-width: 140px;
 }
-
-.stock-toolbar__search :deep(.ax-field) {
-  margin-bottom: 0;
-}
-
-.stock-toolbar__check {
-  display: flex;
+.stock-filter-toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-  padding-bottom: 0.35rem;
-  cursor: pointer;
-}
-
-.stock-toolbar__page {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.stock-toolbar__label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--ax-app-text-secondary, #1e293b);
-}
-
-.stock-toolbar__select {
-  min-height: 44px;
+  gap: 0.3rem;
+  height: 36px;
   padding: 0 0.85rem;
-  border-radius: 10px;
-  border: 1.5px solid var(--ax-app-border-subtle, #94a3b8);
-  background: var(--ax-app-surface, #fff);
-  color: var(--ax-app-text, #0f172a);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.stock-toolbar__select:focus {
-  outline: none;
-  border-color: var(--ax-accent, #06b6d4);
-  box-shadow: inset 0 0 0 1px var(--ax-accent, #06b6d4);
-}
-
-.stock-toolbar__nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.stock-toolbar__meta {
+  border-radius: 8px;
+  border: 1.5px solid var(--mc-app-border-subtle, #c8c5bd);
+  background: var(--mc-app-surface, #fff);
+  color: var(--mc-app-text-secondary, #333336);
   font-size: 0.85rem;
-  color: var(--ax-app-text-muted, #475569);
-  font-weight: 500;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.stock-filter-toggle:hover {
+  border-color: var(--mc-accent, #f47a20);
+}
+.stock-filter-toggle--on {
+  border-color: var(--mc-accent, #f47a20);
+  background: var(--mc-accent, #f47a20);
+  color: #fff;
+}
+.stock-filter-toggle--on:hover { background: #d96a15; border-color: #d96a15; }
+
+.stock-filter-rows {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--mc-app-text-muted, #5c5a56);
+}
+.stock-filter-rows__label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stock-filter-rows select {
+  height: 32px;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--mc-app-border-soft, #ddd9d3);
+  background: var(--mc-app-surface, #fff);
+  font-size: 0.85rem;
+}
+.stock-filter-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.stock-filter-pager__meta {
+  font-size: 0.78rem;
+  color: var(--mc-app-text-muted, #5c5a56);
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .stock-table-wrap {
@@ -1283,21 +1288,35 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
 
 .stock-table {
   width: 100%;
-  min-width: 750px;
+  min-width: 820px;
   font-size: 0.88rem;
 }
 
 .text-right { text-align: right; }
 .text-center { text-align: center; }
 
-.stock-mono {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+/* Combined name/SKU/barcode cell */
+.stock-product {
+  max-width: 22rem;
+  line-height: 1.3;
 }
+.stock-product__name {
+  font-weight: 700;
+  color: var(--mc-app-heading, #0a0a0c);
+}
+.stock-product__meta {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--mc-app-text-muted, #5c5a56);
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.1rem;
+}
+.stock-product__sku { font-weight: 600; }
 
-.stock-name {
-  max-width: 200px;
-  font-weight: 500;
+.stock-status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
 .stock-warn {
@@ -1325,8 +1344,19 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   font-weight: 600;
 }
 
+.stock-supplier-disc {
+  display: block;
+  font-size: 0.75em;
+  color: var(--mc-app-accent, #0a7e3d);
+  font-weight: 600;
+}
+
 .stock-qty--low {
   color: #e65100;
+}
+
+.stock-qty--out {
+  color: #c62828;
 }
 
 .stock-qty--consign {
@@ -1334,7 +1364,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
 }
 
 .stock-qty--none {
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
 }
 
 .stock-actions {
@@ -1353,15 +1383,15 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid var(--ax-app-border, #ddd);
+  border: 1px solid var(--mc-app-border, #ddd);
   border-radius: 4px;
   cursor: pointer;
   font-size: 1.1rem;
   padding: 4px 8px;
   line-height: 1;
-  color: var(--ax-app-text, #333);
+  color: var(--mc-app-text, #333);
 }
-.stock-actions-toggle:hover { background: var(--ax-app-bg-hover, #f0f0f0); }
+.stock-actions-toggle:hover { background: var(--mc-app-bg-hover, #f0f0f0); }
 
 .stock-actions-dropdown {
   position: absolute;
@@ -1369,7 +1399,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   top: 100%;
   z-index: 100;
   background: #fff;
-  border: 1px solid var(--ax-app-border, #ddd);
+  border: 1px solid var(--mc-app-border, #ddd);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   min-width: 180px;
@@ -1384,10 +1414,10 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   padding: 6px 14px;
   font-size: 0.84rem;
   cursor: pointer;
-  color: var(--ax-app-text, #333);
+  color: var(--mc-app-text, #333);
 }
 .stock-actions-dropdown button:hover {
-  background: var(--ax-app-bg-hover, #f5f5f5);
+  background: var(--mc-app-bg-hover, #f5f5f5);
 }
 
 .stock-loading {
@@ -1396,7 +1426,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   justify-content: center;
   gap: 0.75rem;
   padding: 3rem;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
 }
 
 .stock-drawer-overlay {
@@ -1414,11 +1444,11 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   bottom: 0;
   z-index: 10031;
   width: min(480px, 100vw);
-  background: var(--ax-app-surface, #fff);
+  background: var(--mc-app-surface, #fff);
   box-shadow: -8px 0 40px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--ax-app-border-soft, #cbd5e1);
+  border-left: 1px solid var(--mc-app-border-soft, #ddd9d3);
 }
 
 .stock-drawer__head {
@@ -1426,8 +1456,8 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   align-items: center;
   justify-content: space-between;
   padding: 1.15rem 1.5rem;
-  border-bottom: 1px solid var(--ax-app-border-faint, #e2e8f0);
-  background: var(--ax-app-surface-2, #f8fafc);
+  border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
+  background: var(--mc-app-surface-2, #f9f8f6);
 }
 
 .stock-drawer__title {
@@ -1441,19 +1471,19 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
 .stock-drawer__close {
   width: 44px;
   height: 44px;
-  border: 1.5px solid var(--ax-app-border-faint, #e2e8f0);
-  background: var(--ax-app-surface, #fff);
+  border: 1.5px solid var(--mc-app-border-faint, #eceae5);
+  background: var(--mc-app-surface, #fff);
   border-radius: 10px;
   font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
-  color: var(--ax-app-text-secondary, #1e293b);
+  color: var(--mc-app-text-secondary, #333336);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .stock-drawer__close:hover {
-  background: var(--ax-app-surface-muted, #e2e8f0);
-  border-color: var(--ax-app-border-subtle, #94a3b8);
+  background: var(--mc-app-surface-muted, #f0eeea);
+  border-color: var(--mc-app-border-subtle, #c8c5bd);
 }
 
 .stock-drawer__body {
@@ -1474,22 +1504,32 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   }
 }
 
+.stock-drawer__effective-cost {
+  grid-column: 1 / -1;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--mc-app-text-secondary, #665);
+  background: var(--mc-app-surface-2, #f5f3ef);
+  border-radius: 6px;
+}
+
 .stock-drawer__foot {
   padding: 1.15rem 1.5rem;
-  border-top: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border-top: 1px solid var(--mc-app-border-faint, #eceae5);
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
   flex-wrap: wrap;
-  background: var(--ax-app-surface-2, #f8fafc);
+  background: var(--mc-app-surface-2, #f9f8f6);
 }
 
 .stock-drawer__adjust {
   margin-top: 1rem;
   padding: 1rem;
-  border: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border: 1px solid var(--mc-app-border-faint, #eceae5);
   border-radius: 12px;
-  background: var(--ax-app-surface-2, #f8fafc);
+  background: var(--mc-app-surface-2, #f9f8f6);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1503,27 +1543,27 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--ax-app-text, #1b1b1b);
+  color: var(--mc-app-text, #1b1b1b);
 }
 .stock-drawer__adjust-hint {
   margin: 0;
   font-size: 0.78rem;
-  color: var(--ax-app-text-muted, #6b6b6b);
+  color: var(--mc-app-text-muted, #6b6b6b);
   line-height: 1.35;
 }
 .stock-drawer__adjust-delta {
   margin: 0;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--ax-accent, #0891b2);
+  color: var(--mc-accent, #a0570c);
 }
 
 .pricing-section {
   margin-top: 1rem;
   padding: 1rem;
-  border: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border: 1px solid var(--mc-app-border-faint, #eceae5);
   border-radius: 12px;
-  background: var(--ax-app-surface-2, #f8fafc);
+  background: var(--mc-app-surface-2, #f9f8f6);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -1539,12 +1579,12 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--ax-app-text, #0f172a);
+  color: var(--mc-app-text, #1a1a1c);
 }
 .pricing-section__source {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
   font-weight: 500;
 }
 .pricing-lock {
@@ -1552,7 +1592,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   gap: 0.45rem;
   align-items: center;
   font-size: 0.88rem;
-  color: var(--ax-app-text-secondary, #1e293b);
+  color: var(--mc-app-text-secondary, #333336);
   padding-top: 0.35rem;
 }
 .pricing-preview {
@@ -1560,7 +1600,7 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 0.5rem 1rem;
   padding: 0.75rem;
-  border: 1px solid var(--ax-app-border-faint, #e2e8f0);
+  border: 1px solid var(--mc-app-border-faint, #eceae5);
   border-radius: 10px;
   background: #fff;
 }
@@ -1569,12 +1609,12 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
   margin-bottom: 0.15rem;
 }
 .pricing-preview strong {
   font-size: 0.95rem;
-  color: var(--ax-app-text, #0f172a);
+  color: var(--mc-app-text, #1a1a1c);
 }
 
 .stock-drawer-fade-enter-active,
@@ -1608,12 +1648,12 @@ onUnmounted(() => document.removeEventListener('click', closeActionsMenu))
   font-weight: 600;
   font-size: 1rem;
   margin: 0 0 1rem;
-  color: var(--ax-app-heading, #020617);
+  color: var(--mc-app-heading, #0a0a0c);
 }
 
 .receipt-max-hint {
   font-size: 0.82rem;
-  color: var(--ax-app-text-muted, #475569);
+  color: var(--mc-app-text-muted, #5c5a56);
   margin: -0.5rem 0 0.75rem;
 }
 </style>
