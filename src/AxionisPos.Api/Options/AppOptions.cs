@@ -1,9 +1,15 @@
 namespace AxionisPos.Api.Options;
 
+/// <summary>
+/// Per-deployment configuration. All Company* fields are populated by the
+/// hosting deployment via appsettings.json, env vars or BusinessSettings — the
+/// in-code defaults are deliberately neutral so a fresh white-label install
+/// doesn't inherit any vendor-specific identity.
+/// </summary>
 public class AppOptions
 {
     public const string SectionName = "App";
-    public string PublicBaseUrl { get; set; } = "http://localhost:5173";
+    public string PublicBaseUrl { get; set; } = "";
     public string PdfStoragePath { get; set; } = "storage/pdfs";
     public string BrandingStoragePath { get; set; } = "storage/branding";
     public bool HideCostForSalesRole { get; set; } = true;
