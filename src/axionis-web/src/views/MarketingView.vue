@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const visible = ref(new Set<string>())
+const showStickyBar = ref(false)
+
+function handleScroll() {
+  showStickyBar.value = window.scrollY > window.innerHeight * 0.6
+}
 
 onMounted(() => {
   const observer = new IntersectionObserver(
@@ -16,6 +21,11 @@ onMounted(() => {
     { threshold: 0.12 }
   )
   document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el))
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 
 function isVisible(id: string) {
@@ -108,6 +118,26 @@ const included = [
         <div class="mk-indicator">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
           <span>Tablet Ready</span>
+        </div>
+      </div>
+
+      <!-- Trust signals -->
+      <div class="mk-trust">
+        <div class="mk-trust__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Secure cloud hosting</span>
+        </div>
+        <div class="mk-trust__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>99.9% uptime</span>
+        </div>
+        <div class="mk-trust__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>South African support</span>
+        </div>
+        <div class="mk-trust__item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Automatic backups</span>
         </div>
       </div>
     </section>
@@ -233,6 +263,7 @@ const included = [
             <li>Owned and consignment stock separated</li>
             <li>PDF import and reconciliation</li>
           </ul>
+          <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-btn mk-btn--ghost mk-split__cta">See consignment in action</a>
         </div>
         <div class="mk-split__visual">
           <div class="mk-mini-card">
@@ -260,6 +291,7 @@ const included = [
             <li>Branded PDF generation</li>
             <li>Customer and company records linked</li>
           </ul>
+          <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-btn mk-btn--ghost mk-split__cta">See quotes and invoicing</a>
         </div>
         <div class="mk-split__visual">
           <div class="mk-mini-card">
@@ -348,6 +380,12 @@ const included = [
         <div class="mk-footer__copy">Built by <strong>Charsley Digital</strong></div>
       </div>
     </footer>
+
+    <!-- Sticky mobile CTA -->
+    <div class="mk-sticky" :class="{ 'mk-sticky--show': showStickyBar }">
+      <a href="mailto:hello@charsleydigital.com?subject=Axionis%20POS%20Demo%20Request" class="mk-sticky__btn">Request Demo</a>
+      <a href="#pricing" class="mk-sticky__link">View Pricing</a>
+    </div>
   </div>
 </template>
 
@@ -410,6 +448,12 @@ const included = [
 .mk-indicator { display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:1.25rem 2rem;background:var(--surface);min-width:0; }
 .mk-indicator svg { width:22px;height:22px;color:var(--accent); }
 .mk-indicator span { font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap; }
+
+/* ── TRUST BAR ── */
+.mk-trust { position:relative;z-index:1;display:flex;flex-wrap:wrap;justify-content:center;gap:2rem;margin-top:3rem; }
+.mk-trust__item { display:flex;align-items:center;gap:.5rem; }
+.mk-trust__item svg { width:18px;height:18px;color:var(--accent);flex-shrink:0; }
+.mk-trust__item span { font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.02em; }
 
 /* ── SECTIONS ── */
 .mk-section { padding:6rem 2rem;max-width:1100px;margin:0 auto; }
@@ -479,6 +523,7 @@ const included = [
 .mk-check-list { list-style:none;padding:0;margin:0; }
 .mk-check-list li { padding:.4rem 0 .4rem 1.5rem;font-size:.95rem;color:var(--text);position:relative; }
 .mk-check-list li::before { content:'✓';position:absolute;left:0;color:var(--accent);font-weight:700; }
+.mk-split__cta { margin-top:1.5rem;padding:.65rem 1.75rem;font-size:.85rem; }
 
 /* ── DEVICE MOCKUP ── */
 .mk-device { width:260px;margin:0 auto;border:3px solid #334155;border-radius:28px;overflow:hidden;background:#0f172a;box-shadow:0 20px 60px rgba(0,0,0,.4); }
@@ -556,6 +601,9 @@ const included = [
 .mk-footer__copy { font-size:.85rem;color:var(--muted); }
 .mk-footer__copy strong { color:var(--accent);font-weight:600; }
 
+/* ── STICKY MOBILE CTA ── */
+.mk-sticky { display:none; }
+
 /* ── RESPONSIVE ── */
 @media(max-width:900px) {
   .mk-split { grid-template-columns:1fr;gap:2rem; }
@@ -579,6 +627,13 @@ const included = [
   .mk-mock-sidebar__item { white-space:nowrap;font-size:.55rem;padding:.25rem .5rem; }
 
   .mk-footer__inner { flex-direction:column;align-items:flex-start; }
+
+  .mk-sticky { display:flex;position:fixed;bottom:0;left:0;right:0;z-index:99;padding:.75rem 1rem;background:rgba(5,10,24,.95);backdrop-filter:blur(12px);border-top:1px solid var(--border);gap:.75rem;align-items:center;justify-content:center;transform:translateY(100%);transition:transform .3s ease; }
+  .mk-sticky--show { transform:translateY(0); }
+  .mk-sticky__btn { flex:1;max-width:200px;display:inline-flex;align-items:center;justify-content:center;padding:.65rem 1rem;border-radius:8px;background:linear-gradient(135deg,var(--accent),#0891b2);color:#050a18;font-weight:700;font-size:.85rem;text-decoration:none;letter-spacing:.04em; }
+  .mk-sticky__link { font-size:.8rem;font-weight:600;color:var(--accent);text-decoration:none; }
+
+  .mk-footer { padding-bottom:5rem; }
 }
 
 @media(max-width:600px) {
