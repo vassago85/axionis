@@ -1,5 +1,11 @@
-/** Axionis logo — use on dark backgrounds (app shell, login). */
-export const logoLight = '/brand/axionis-logo.svg'
+// White-label build-time fallbacks. The runtime branding store
+// (useBranding) loads the live values from BusinessSettings and overrides
+// these. We deliberately ship NO bundled logo so a fresh deployment shows the
+// configured business name as a text wordmark until an operator uploads
+// their logo via Settings -> Business / Branding.
 
-/** Axionis logo — favicon, PWA icons, light / high-contrast surfaces. */
-export const logoDark = '/brand/axionis-logo.svg'
+/** Fallback logo for dark surfaces (sidebar, login). null = render text. */
+export const logoLight: string | null = null
+
+/** Fallback logo for light surfaces (favicon, public docs). null = render text. */
+export const logoDark: string | null = null

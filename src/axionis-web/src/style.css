@@ -429,6 +429,15 @@ body.ax-body-app .ax-main tbody tr:hover {
   border-bottom: 1px solid #1e293b;
 }
 
+.ax-sidebar__wordmark {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ax-text, #f1f5f9);
+  line-height: 1.2;
+}
+
 .ax-sidebar__logo {
   height: 36px;
   width: auto;

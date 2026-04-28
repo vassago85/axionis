@@ -61,7 +61,8 @@ async function submit() {
   <div class="auth-layout">
     <div class="auth-panel">
       <div class="auth-panel__brand">
-        <img class="auth-panel__logo" :src="logoUrl ?? logoDark" :alt="businessName" width="240" height="72" />
+        <img v-if="logoUrl ?? logoDark" class="auth-panel__logo" :src="(logoUrl ?? logoDark) as string" :alt="businessName" width="240" height="72" />
+        <span v-else class="auth-panel__wordmark">{{ businessName }}</span>
       </div>
       <p class="auth-panel__title">Set your password</p>
       <p class="auth-panel__sub">
@@ -117,6 +118,15 @@ async function submit() {
 .auth-panel__logo {
   max-width: min(240px, 70vw);
   height: auto;
+}
+
+.auth-panel__wordmark {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #1e293b;
+  line-height: 1.1;
 }
 
 .auth-panel__title {

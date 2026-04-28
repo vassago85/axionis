@@ -60,7 +60,8 @@ function logout() {
     />
     <aside class="ax-sidebar" :class="{ 'ax-sidebar--open': sidebarOpen }">
       <div class="ax-sidebar__brand">
-        <img class="ax-sidebar__logo" :src="brandLogo" :alt="businessName" width="140" height="36" />
+        <img v-if="brandLogo" class="ax-sidebar__logo" :src="brandLogo" :alt="businessName" width="140" height="36" />
+        <span v-else class="ax-sidebar__wordmark">{{ businessName }}</span>
         <p class="ax-sidebar__tag">Point of sale</p>
       </div>
       <nav class="ax-sidebar__nav" aria-label="Main">
