@@ -10,6 +10,7 @@ import {
   PackageCheck, Upload, BarChart3, DollarSign, Mail, Users, Building2,
   Settings as SettingsIcon,
   FileText,
+  LayoutDashboard,
   Printer,
   Store,
   LogOut
@@ -85,6 +86,7 @@ function logout() {
         </div>
         <div v-if="auth.hasRole('Admin', 'Owner', 'Dev')" class="ax-nav-group">
           <p class="ax-nav-group__label">Office</p>
+          <RouterLink class="ax-nav-link" to="/dashboard" @click="sidebarOpen = false"><LayoutDashboard :size="16" />Dashboard</RouterLink>
           <RouterLink class="ax-nav-link" to="/deliveries" @click="sidebarOpen = false"><PackageCheck :size="16" />Deliveries</RouterLink>
           <RouterLink class="ax-nav-link" to="/wholesalers" @click="sidebarOpen = false"><Building2 :size="16" />Wholesalers</RouterLink>
           <RouterLink class="ax-nav-link" to="/import" @click="sidebarOpen = false"><Upload :size="16" />Import</RouterLink>
