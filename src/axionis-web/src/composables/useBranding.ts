@@ -12,6 +12,7 @@ export interface BrandingFeatures {
   quotes: boolean
   discounts: boolean
   brandPricingRules: boolean
+  accounts: boolean
 }
 
 export interface Branding {
@@ -33,7 +34,7 @@ const DEFAULTS: Branding = {
   secondaryColor: '',
   accentColor: '',
   terminology: { quote: 'Quote', invoice: 'Invoice', customer: 'Customer' },
-  features: { quotes: true, discounts: true, brandPricingRules: true },
+  features: { quotes: true, discounts: true, brandPricingRules: true, accounts: false },
 }
 
 const STORAGE_KEY = 'pos:branding-cache-v1'
@@ -70,6 +71,7 @@ function toPayload(raw: unknown): Branding {
       quotes: boolOr(feat.quotes, true),
       discounts: boolOr(feat.discounts, true),
       brandPricingRules: boolOr(feat.brandPricingRules, true),
+      accounts: boolOr(feat.accounts, false),
     },
   }
 }
