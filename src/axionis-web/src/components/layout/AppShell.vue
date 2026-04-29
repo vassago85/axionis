@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Printer,
   Store,
+  Contact,
   LogOut
 } from 'lucide-vue-next'
 
@@ -87,6 +88,7 @@ function logout() {
         <div v-if="auth.hasRole('Admin', 'Owner', 'Dev')" class="ax-nav-group">
           <p class="ax-nav-group__label">Office</p>
           <RouterLink class="ax-nav-link" to="/dashboard" @click="sidebarOpen = false"><LayoutDashboard :size="16" />Dashboard</RouterLink>
+          <RouterLink class="ax-nav-link" to="/customers" @click="sidebarOpen = false"><Contact :size="16" />Customers</RouterLink>
           <RouterLink class="ax-nav-link" to="/deliveries" @click="sidebarOpen = false"><PackageCheck :size="16" />Deliveries</RouterLink>
           <RouterLink class="ax-nav-link" to="/wholesalers" @click="sidebarOpen = false"><Building2 :size="16" />Wholesalers</RouterLink>
           <RouterLink class="ax-nav-link" to="/import" @click="sidebarOpen = false"><Upload :size="16" />Import</RouterLink>
