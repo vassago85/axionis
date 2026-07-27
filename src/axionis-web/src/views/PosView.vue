@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { http } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useBranding } from '@/composables/useBranding'
@@ -16,6 +17,8 @@ import McCheckbox from '@/components/ui/McCheckbox.vue'
 import McBadge from '@/components/ui/McBadge.vue'
 import { Minus, Plus, ChevronDown, ChevronRight, Search, Camera, Check, CreditCard, Banknote, Smartphone, Wallet, X } from 'lucide-vue-next'
 import { beepSuccess, beepError } from '@/utils/beep'
+
+const router = useRouter()
 
 type Product = {
   id: string
@@ -35,7 +38,12 @@ type ActivePromotion = {
   specials: ActiveSpecial[]
 }
 
-type Line = { product: Product; qty: number; unitPrice: number; lineDiscount: number; originalPrice: number; discMode: 'R' | '%'; discInput: number }
+/**
+ * `originalPrice` is catalog retail, `basePrice` is the going price for this sale
+ * (promotion price when one is running, otherwise retail). Anything below `basePrice`
+ * is recorded as a discount off the going price rather than as a price change.
+ */
+type Line = { product: Product; qty: number; unitPrice: number; lineDiscount: number; originalPrice: number; basePrice: number; discMode: 'R' | '%'; discInput: number }
 
 const q = ref('')
 const results = ref<Product[]>([])
@@ -344,12 +352,41 @@ async function commitEntry(rawCode: string, options?: { forceExact?: boolean }):
   return true
 }
 
+/**
+ * When armed, the next scan / Enter in the POS search box opens Find sale with
+ * that code instead of adding to the cart. One-shot so normal selling resumes
+ * automatically after the lookup.
+ */
+const scanToFindSale = ref(false)
+
+const findSaleRoute = computed(() => {
+  const term = q.value.trim()
+  return term.length >= 2
+    ? { path: '/find-sale', query: { q: term } }
+    : { path: '/find-sale' }
+})
+
+function goFindSale(code?: string) {
+  const term = (code ?? q.value).trim()
+  scanToFindSale.value = false
+  scanOpen.value = false
+  if (term.length >= 2) {
+    void router.push({ path: '/find-sale', query: { q: term } })
+  } else {
+    void router.push('/find-sale')
+  }
+}
+
 function onSearchKeydown(ev: KeyboardEvent) {
   noteKeyTimingFromKey(ev)
   if (ev.key !== 'Enter') return
   ev.preventDefault()
   const code = q.value.trim()
   if (!code) return
+  if (scanToFindSale.value) {
+    goFindSale(code)
+    return
+  }
   // Scanner-shaped input: treat Enter as a firm commit (error toast on miss).
   // Slow manual typing: only commit if there's a single, unambiguous hit.
   const forceExact = scannerBufferActive
@@ -385,13 +422,17 @@ function addToCart(p: Product) {
   } else {
     if (!isManager.value && p.qtyOnHand < 1) return
     const { price } = getEffectivePrice(p)
-    cart.value.push({ product: p, qty: 1, unitPrice: price, originalPrice: p.sellPrice, lineDiscount: 0, discMode: 'R', discInput: 0 })
+    cart.value.push({ product: p, qty: 1, unitPrice: price, originalPrice: p.sellPrice, basePrice: price, lineDiscount: 0, discMode: 'R', discInput: 0 })
   }
   markAdded(p)
 }
 
 function onScan(code: string) {
   const trimmed = code.trim()
+  if (scanToFindSale.value) {
+    goFindSale(trimmed)
+    return
+  }
   q.value = trimmed
   scanOpen.value = false
   void commitEntry(trimmed, { forceExact: true })
@@ -414,12 +455,39 @@ function computedLineDiscount(l: Line): number {
   return l.discInput
 }
 
+function priceConcession(l: Line): number {
+  if (l.unitPrice >= l.basePrice) return 0
+  return Math.round((l.basePrice - l.unitPrice) * l.qty * 100) / 100
+}
+
+function totalLineDiscount(l: Line): number {
+  return Math.round((priceConcession(l) + computedLineDiscount(l)) * 100) / 100
+}
+
+function lineDiscountPercent(l: Line): number {
+  const gross = l.basePrice * l.qty
+  if (gross <= 0) return 0
+  return Math.round(totalLineDiscount(l) / gross * 1000) / 10
+}
+
+function lineOverDiscountLimit(l: Line): boolean {
+  if (isManager.value || !posRules.value) return false
+  const limit = posRules.value.maxPriceDecreasePercentFromList
+  return totalLineDiscount(l) > 0 && lineDiscountPercent(l) > limit
+}
+
 const subTotal = computed(() =>
   cart.value.reduce((s, l) => {
     const ld = computedLineDiscount(l)
     return s + Math.max(0, l.unitPrice * l.qty - ld)
   }, 0)
 )
+
+const cartLineDiscounts = computed(() =>
+  Math.round(cart.value.reduce((s, l) => s + totalLineDiscount(l), 0) * 100) / 100
+)
+
+const cartGross = computed(() => Math.round((subTotal.value + cartLineDiscounts.value) * 100) / 100)
 
 const grandPreview = computed(() => Math.max(0, subTotal.value - discountTotal.value))
 const vatAmount = computed(() => {
@@ -835,7 +903,20 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
                     <span class="pos-cart-name__meta">
                       {{ l.product.sku }}<template v-if="l.product.barcode"> · {{ l.product.barcode }}</template>
                     </span>
-                    <span v-if="l.originalPrice !== l.unitPrice" class="pos-cart-was">was {{ formatZAR(l.originalPrice) }}</span>
+                    <span v-if="l.originalPrice > l.basePrice" class="pos-cart-note">
+                      {{ activePromo?.promotionName || 'Promotion' }} —
+                      <span class="pos-cart-was">{{ formatZAR(l.originalPrice) }}</span>
+                    </span>
+                    <span v-if="totalLineDiscount(l) > 0" class="pos-cart-disc">
+                      Discount off {{ formatZAR(l.basePrice) }}:
+                      −{{ formatZAR(totalLineDiscount(l)) }} ({{ lineDiscountPercent(l) }}%)
+                    </span>
+                    <span v-if="l.unitPrice > l.basePrice" class="pos-cart-note">
+                      Price raised from {{ formatZAR(l.basePrice) }}
+                    </span>
+                    <McBadge v-if="lineOverDiscountLimit(l)" variant="warning">
+                      Over the {{ posRules?.maxPriceDecreasePercentFromList }}% limit — a manager must approve
+                    </McBadge>
                     <McBadge v-if="l.qty > l.product.qtyOnHand" variant="warning">Special order — {{ l.qty - Math.max(0, l.product.qtyOnHand) }} to deliver</McBadge>
                   </td>
                   <td>
@@ -998,12 +1079,20 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 
             <!-- Totals -->
             <div class="pos-totals" :class="{ 'pos-totals--pulse': totalPulse }">
+              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Retail value</span>
+                <span>{{ formatZAR(cartGross) }}</span>
+              </div>
+              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Discount given</span>
+                <strong>− {{ formatZAR(cartLineDiscounts) }}</strong>
+              </div>
               <div class="pos-totals__row">
                 <span>Subtotal</span>
                 <strong>{{ formatZAR(subTotal) }}</strong>
               </div>
               <div v-if="isManager && discountTotal > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>Discount</span>
+                <span>Order discount</span>
                 <strong>− {{ formatZAR(discountTotal) }}</strong>
               </div>
               <div v-if="grandPreview > 0" class="pos-totals__row pos-totals__row--muted">
@@ -1060,14 +1149,30 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
         </div>
       </aside>
 
-      <!-- Recent invoices.
+      <!-- Recent invoices + Find sale.
            Sits in the left column under the cart on desktop (placed via grid),
            and falls naturally to the bottom on mobile (after the checkout). -->
-      <div v-if="recentInvoices.length" class="pos-panel pos-panel--recent pos-workspace__recent">
+      <div class="pos-panel pos-panel--recent pos-workspace__recent">
         <div class="pos-panel__head">
           <span>Recent invoices</span>
+          <div class="pos-find-sale-wrap">
+            <button
+              type="button"
+              class="pos-scan-to-find"
+              :class="{ 'pos-scan-to-find--on': scanToFindSale }"
+              :aria-pressed="scanToFindSale"
+              title="Arm the next barcode scan to open Find sale instead of adding to cart"
+              @click="scanToFindSale = !scanToFindSale"
+            >
+              {{ scanToFindSale ? 'Scan item now…' : 'Scan to find' }}
+            </button>
+            <RouterLink class="pos-find-sale" :to="findSaleRoute">Find sale</RouterLink>
+          </div>
         </div>
-        <div class="pos-panel__body pos-recent-list">
+        <p v-if="scanToFindSale" class="pos-scan-to-find-hint">
+          Next scan opens Find sale with that barcode. Tap again to cancel.
+        </p>
+        <div v-if="recentInvoices.length" class="pos-panel__body pos-recent-list">
           <a
             v-for="inv in recentInvoices"
             :key="inv.id"
@@ -1081,6 +1186,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
             <span class="pos-recent-item__total">{{ formatZAR(inv.grandTotal) }}</span>
           </a>
         </div>
+        <p v-else class="pos-recent-empty">No recent sales yet. Use Find sale to look up older invoices.</p>
       </div>
     </div>
 
@@ -1900,6 +2006,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.55rem 0.9rem;
   font-size: 0.82rem;
   font-weight: 600;
@@ -1907,6 +2014,55 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   letter-spacing: 0.03em;
   color: var(--mc-text-muted, #7a7874);
   border-bottom: 1px solid var(--mc-app-border-soft, #ddd9d3);
+}
+.pos-find-sale-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+.pos-find-sale,
+.pos-scan-to-find {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--mc-app-accent, #f47a20);
+  padding: 0.25rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.pos-find-sale:hover,
+.pos-scan-to-find:hover {
+  background: rgba(244, 122, 32, 0.1);
+}
+.pos-scan-to-find--on {
+  background: var(--mc-app-accent, #f47a20);
+  color: #fff;
+  border-color: var(--mc-app-accent, #f47a20);
+}
+.pos-scan-to-find--on:hover {
+  filter: brightness(0.95);
+  background: var(--mc-app-accent, #f47a20);
+}
+.pos-scan-to-find-hint {
+  margin: 0;
+  padding: 0.55rem 0.9rem 0;
+  font-size: 0.8rem;
+  color: var(--mc-app-accent, #f47a20);
+  font-weight: 600;
+}
+.pos-recent-empty {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.84rem;
+  color: var(--mc-app-text-muted, #5c5a56);
 }
 .pos-recent-list {
   display: flex;
@@ -1999,12 +2155,22 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   letter-spacing: 0.06em;
 }
 
-.pos-cart-was {
+.pos-cart-note {
   display: block;
   font-size: 0.72rem;
   color: var(--mc-app-text-muted, #5c5a56);
-  text-decoration: line-through;
   font-weight: 400;
+}
+
+.pos-cart-was {
+  text-decoration: line-through;
+}
+
+.pos-cart-disc {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #cc0000;
 }
 
 /* ── Sale summary modal (unchanged look) ──────────────────────────────── */

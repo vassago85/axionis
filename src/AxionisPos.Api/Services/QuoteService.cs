@@ -253,12 +253,14 @@ public class QuoteService
             PaymentMethod = paymentMethod,
             DiscountTotal = q.DiscountTotal,
             SendEmail = false,
+            // OriginalUnitPrice left at 0 so the invoice snapshots catalog retail. A quoted
+            // price below retail is then booked as a discount rather than a rewritten price.
             Lines = productLines.Select(l => new CreateInvoiceLineRequest
             {
                 ProductId = l.ProductId!.Value,
                 Quantity = l.Quantity,
                 UnitPriceOverride = l.UnitPrice,
-                OriginalUnitPrice = l.UnitPrice,
+                OriginalUnitPrice = 0m,
                 LineDiscount = l.DiscountAmount ?? 0m
             }).ToList()
         };

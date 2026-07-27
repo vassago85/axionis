@@ -215,6 +215,19 @@ public static class DbSeeder
         if (!db.Database.IsSqlite()) return;
         try { await db.Database.ExecuteSqlRawAsync(
             """ALTER TABLE "InvoiceLines" ADD COLUMN "CostAtSale" TEXT NOT NULL DEFAULT '0';""", ct); } catch { }
+
+        try { await db.Database.ExecuteSqlRawAsync(
+            """ALTER TABLE "InvoiceLines" ADD COLUMN "SkuAtSale" TEXT NULL;""", ct); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("""
+            UPDATE "InvoiceLines"
+            SET "SkuAtSale" = (SELECT "Sku" FROM "Products" WHERE "Products"."Id" = "InvoiceLines"."ProductId")
+            WHERE "SkuAtSale" IS NULL;
+            """, ct); } catch { }
+
+        try { await db.Database.ExecuteSqlRawAsync(
+            """CREATE INDEX IF NOT EXISTS "IX_InvoiceLines_SkuAtSale" ON "InvoiceLines" ("SkuAtSale");""", ct); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(
+            """CREATE INDEX IF NOT EXISTS "IX_InvoiceLines_InvoiceId" ON "InvoiceLines" ("InvoiceId");""", ct); } catch { }
     }
 
     private static async Task EnsureStockReceiptsTableAsync(AxionisDbContext db, CancellationToken ct)

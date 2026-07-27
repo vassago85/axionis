@@ -14,6 +14,7 @@ import {
   Printer,
   Store,
   Contact,
+  History,
   LogOut
 } from 'lucide-vue-next'
 
@@ -72,6 +73,7 @@ function logout() {
           <RouterLink class="ax-nav-link" to="/pos" @click="sidebarOpen = false"><ShoppingCart :size="16" />POS</RouterLink>
           <RouterLink v-if="features.quotes" class="ax-nav-link" to="/quotes" @click="sidebarOpen = false"><FileText :size="16" />{{ terminology.quote }}s</RouterLink>
           <RouterLink class="ax-nav-link" to="/price-lookup" @click="sidebarOpen = false"><Search :size="16" />Price lookup</RouterLink>
+          <RouterLink class="ax-nav-link" to="/find-sale" @click="sidebarOpen = false"><History :size="16" />Find sale</RouterLink>
         </div>
         <div class="ax-nav-group">
           <p class="ax-nav-group__label">Inventory</p>

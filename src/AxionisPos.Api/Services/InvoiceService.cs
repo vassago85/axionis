@@ -63,6 +63,51 @@ public class InvoiceService
         var productIds = req.Lines.Select(l => l.ProductId).Distinct().ToList();
         var products = await _db.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
 
+        // Resolve active-promotion effective prices so Sales staff can ring up
+        // promo-discounted items without tripping the PosRules price-drift check,
+        // and so promo prices are not mis-recorded as operator concessions.
+        Dictionary<Guid, decimal>? promoEffectivePrices = null;
+        {
+            var now = DateTimeOffset.UtcNow;
+            var allActivePromos = await _db.Promotions.AsNoTracking()
+                .Where(p => p.IsActive).ToListAsync(ct);
+            var promo = allActivePromos
+                .Where(p => !p.StartsAt.HasValue || p.StartsAt <= now)
+                .Where(p => !p.EndsAt.HasValue || p.EndsAt >= now)
+                .FirstOrDefault();
+
+            if (promo != null)
+            {
+                promoEffectivePrices = new Dictionary<Guid, decimal>();
+
+                var specials = await _db.ProductSpecials.AsNoTracking()
+                    .Where(s => s.IsActive && (s.PromotionId == null || s.PromotionId == promo.Id))
+                    .ToListAsync(ct);
+                var specialsByProduct = specials
+                    .GroupBy(s => s.ProductId)
+                    .ToDictionary(g => g.Key,
+                        g => g.OrderByDescending(s => s.PromotionId.HasValue).First());
+
+                foreach (var pid in productIds)
+                {
+                    if (!products.TryGetValue(pid, out var prod)) continue;
+                    if (specialsByProduct.TryGetValue(pid, out var special))
+                    {
+                        if (special.SpecialPrice.HasValue)
+                            promoEffectivePrices[pid] = special.SpecialPrice.Value;
+                        else if (special.DiscountPercent.HasValue)
+                            promoEffectivePrices[pid] = PricingCalculator.RoundToR10(
+                                prod.SellPrice * (1 - special.DiscountPercent.Value / 100m));
+                    }
+                    else if (promo.DiscountPercent > 0)
+                    {
+                        promoEffectivePrices[pid] = PricingCalculator.RoundToR10(
+                            prod.SellPrice * (1 - promo.DiscountPercent / 100m));
+                    }
+                }
+            }
+        }
+
         var lines = new List<InvoiceLine>();
         decimal subTotal = 0;
         bool isSpecialOrder = false;
@@ -78,29 +123,48 @@ public class InvoiceService
                 isSpecialOrder = true;
             }
 
-            var unit = l.UnitPriceOverride ?? p.SellPrice;
+            // The "going price" for this line is the promotion price when one is running,
+            // otherwise catalog retail. Every concession is measured against this rather
+            // than against whatever the operator typed.
+            var goingPrice = promoEffectivePrices != null && promoEffectivePrices.TryGetValue(p.Id, out var promoPrice)
+                ? promoPrice
+                : p.SellPrice;
+
+            // A price typed below the going price is a discount, not a new price. Charge the
+            // going price and book the difference as LineDiscount so the sale record shows
+            // what was given away. A price above it is still a genuine override.
+            var requested = l.UnitPriceOverride ?? goingPrice;
+            var unit = requested < goingPrice ? goingPrice : requested;
+            var priceConcession = requested < goingPrice
+                ? PricingCalculator.Round2((goingPrice - requested) * l.Quantity)
+                : 0m;
+
+            var lineDiscount = PricingCalculator.Round2(l.LineDiscount + priceConcession);
             var lineGross = unit * l.Quantity;
 
             if (!managerBypassPosRules)
             {
                 var maxLineDisc = PricingCalculator.Round2(lineGross * (_posRules.MaxLineDiscountPercent / 100m));
-                if (l.LineDiscount > maxLineDisc)
+                if (lineDiscount > maxLineDisc)
                     throw new InvalidOperationException(
                         $"Line discount for \"{p.Name}\" exceeds allowed {_posRules.MaxLineDiscountPercent}% of line total.");
 
-                if (l.UnitPriceOverride.HasValue)
-                {
-                    var list = p.SellPrice;
-                    var minUnit = PricingCalculator.Round2(list * (1 - _posRules.MaxPriceDecreasePercentFromList / 100m));
-                    var maxUnit = PricingCalculator.Round2(list * (1 + _posRules.MaxPriceIncreasePercentFromList / 100m));
-                    if (unit < minUnit || unit > maxUnit)
-                        throw new InvalidOperationException(
-                            $"Price for \"{p.Name}\" must stay within {_posRules.MaxPriceDecreasePercentFromList}% below and {_posRules.MaxPriceIncreasePercentFromList}% above list price for sales staff.");
-                }
+                var effectiveUnit = l.Quantity > 0
+                    ? PricingCalculator.Round2((lineGross - lineDiscount) / l.Quantity)
+                    : unit;
+                var minUnit = PricingCalculator.Round2(goingPrice * (1 - _posRules.MaxPriceDecreasePercentFromList / 100m));
+                if (effectiveUnit < minUnit)
+                    throw new InvalidOperationException(
+                        $"\"{p.Name}\" cannot be discounted more than {_posRules.MaxPriceDecreasePercentFromList}% below R{goingPrice:N2} by sales staff.");
+
+                var maxUnit = PricingCalculator.Round2(goingPrice * (1 + _posRules.MaxPriceIncreasePercentFromList / 100m));
+                if (unit > maxUnit)
+                    throw new InvalidOperationException(
+                        $"\"{p.Name}\" cannot be priced more than {_posRules.MaxPriceIncreasePercentFromList}% above R{goingPrice:N2} by sales staff.");
             }
 
-            var lineTotal = PricingCalculator.Round2(unit * l.Quantity - l.LineDiscount);
-            if (lineTotal < 0) lineTotal = 0;
+            if (lineDiscount > lineGross) lineDiscount = PricingCalculator.Round2(lineGross);
+            var lineTotal = PricingCalculator.Round2(lineGross - lineDiscount);
             subTotal += lineTotal;
 
             lines.Add(new InvoiceLine
@@ -108,10 +172,11 @@ public class InvoiceService
                 Id = Guid.NewGuid(),
                 ProductId = p.Id,
                 Description = p.Name,
+                SkuAtSale = p.Sku,
                 Quantity = l.Quantity,
                 UnitPrice = unit,
                 OriginalUnitPrice = l.OriginalUnitPrice > 0 ? l.OriginalUnitPrice : p.SellPrice,
-                LineDiscount = l.LineDiscount,
+                LineDiscount = lineDiscount,
                 LineTotal = lineTotal,
                 CostAtSale = p.Cost
             });
@@ -323,6 +388,7 @@ public class InvoiceService
             {
                 ProductId = l.ProductId,
                 Description = l.Description,
+                Sku = l.SkuAtSale ?? l.Product?.Sku,
                 Quantity = l.Quantity,
                 UnitPrice = l.UnitPrice,
                 OriginalUnitPrice = l.OriginalUnitPrice,
@@ -335,7 +401,9 @@ public class InvoiceService
 
     public async Task<InvoiceDto?> GetAsync(Guid id, CancellationToken ct)
     {
-        var inv = await _db.Invoices.Include(i => i.Lines).FirstOrDefaultAsync(i => i.Id == id, ct);
+        var inv = await _db.Invoices
+            .Include(i => i.Lines).ThenInclude(l => l.Product)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
         return inv == null ? null : MapToDto(inv, null);
     }
 
@@ -355,7 +423,9 @@ public class InvoiceService
 
     public async Task<InvoiceDto?> GetByPublicTokenAsync(Guid token, CancellationToken ct)
     {
-        var inv = await _db.Invoices.Include(i => i.Lines).FirstOrDefaultAsync(i => i.PublicToken == token, ct);
+        var inv = await _db.Invoices
+            .Include(i => i.Lines).ThenInclude(l => l.Product)
+            .FirstOrDefaultAsync(i => i.PublicToken == token, ct);
         return inv == null ? null : await MapToDtoAsync(inv, null, includeCompanyContact: true, ct);
     }
 
