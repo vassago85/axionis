@@ -55,10 +55,16 @@ const customerType = ref('')
 const customerCompany = ref('')
 const customerAddress = ref('')
 const customerVatNumber = ref('')
+const showCustomerFields = ref(false)
 const showBusinessFields = ref(false)
 const customerLoading = ref(false)
 const customerMatch = ref(false)
 const paymentMethod = ref('Card')
+
+const walkInCustomerSummary = computed(() => {
+  const parts = [customerName.value, customerEmail.value].filter((s) => !!s?.trim())
+  return parts.length ? parts.join(' · ') : ''
+})
 
 // Phase 3B.2 — AR customer picker
 type CustomerSummary = {
@@ -532,6 +538,7 @@ async function lookupCustomer() {
       customerAddress.value = data.address || ''
       customerVatNumber.value = data.vatNumber || ''
       if (data.company || data.vatNumber) showBusinessFields.value = true
+      showCustomerFields.value = true
       customerMatch.value = true
       if (data.id && data.accountEnabled) {
         await selectCustomer(data, { silent: true })
@@ -584,6 +591,7 @@ async function selectCustomer(c: CustomerSummary, opts: { silent?: boolean } = {
     showBusinessFields.value = true
   }
   customerMatch.value = true
+  showCustomerFields.value = true
 
   if (c.accountEnabled) {
     await refreshAccountSnapshot(c.id)
@@ -612,6 +620,8 @@ function clearSelectedCustomer() {
   customerAddress.value = ''
   customerVatNumber.value = ''
   customerMatch.value = false
+  showCustomerFields.value = false
+  showBusinessFields.value = false
   if (paymentMethod.value === 'Account') paymentMethod.value = 'Card'
 }
 
@@ -672,6 +682,7 @@ async function doCheckout() {
     customerCompany.value = ''
     customerAddress.value = ''
     customerVatNumber.value = ''
+    showCustomerFields.value = false
     showBusinessFields.value = false
     selectedCustomer.value = null
     selectedAccount.value = null
@@ -816,16 +827,16 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
     </div>
 
     <div class="pos-workspace">
-      <!-- LEFT COLUMN: results + cart + recent invoices -->
-      <div class="pos-workspace__left">
+      <!-- LEFT COLUMN: results + cart stay visible together while searching -->
+      <div class="pos-workspace__left" :class="{ 'pos-workspace__left--searching': !!q.trim() }">
         <!-- Results panel: only when user is actively searching -->
         <aside v-if="q.trim()" class="pos-results-aside">
-          <div class="pos-panel">
+          <div class="pos-panel pos-panel--results">
             <div class="pos-panel__head">
               <span>Results</span>
               <span class="pos-panel__meta" v-if="!searchLoading && results.length">{{ results.length }}</span>
             </div>
-            <div class="pos-panel__body">
+            <div class="pos-panel__body pos-panel__body--results">
               <McSkeleton v-if="searchLoading" :lines="4" />
               <McEmptyState
                 v-else-if="searchNoHits"
@@ -869,7 +880,7 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
           </div>
         </aside>
 
-        <!-- Cart lines -->
+        <!-- Cart lines — always rendered so the counter can see the running sale -->
         <div class="pos-panel pos-panel--cart">
           <div class="pos-panel__head">
             <span>Cart</span>
@@ -962,15 +973,14 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 
       </div>
 
-      <!-- RIGHT COLUMN: sticky checkout panel -->
+      <!-- RIGHT COLUMN: sticky checkout — totals + Complete sale pinned in footer -->
       <aside class="pos-workspace__right">
         <div class="pos-checkout">
           <div class="pos-checkout__head">
             <span>Checkout</span>
           </div>
-          <div class="pos-checkout__body">
-            <!-- Phase 3B.2 — Customer picker (search existing accounts). The legacy
-                 customer-name/email fields below still work for ad-hoc walk-in capture. -->
+          <div class="pos-checkout__scroll">
+            <!-- Phase 3B.2 — Customer picker stays visible (needed before Account tender). -->
             <div v-if="accountsFeatureOn" class="pos-checkout__group pos-customer-picker">
               <div class="pos-checkout__label">Customer</div>
               <div v-if="selectedCustomer" class="pos-customer-pill">
@@ -1028,80 +1038,10 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
                   </li>
                 </ul>
                 <p v-else-if="customerSearchOpen && !customerSearchBusy && customerSearchInput.trim()" class="pos-customer-search__empty">
-                  No matches. Use the field below for a walk-in, or open the
+                  No matches. Use walk-in details below, or open the
                   <RouterLink to="/customers" class="pos-customer-search__link">Customers page</RouterLink>
                   to add one.
                 </p>
-              </div>
-            </div>
-
-            <!-- Customer info -->
-            <div class="pos-checkout__group">
-              <McField label="Customer name" for-id="cust-name">
-                <input id="cust-name" v-model="customerName" type="text" autocomplete="name" />
-              </McField>
-              <McField label="Email (receipt)" for-id="cust-email">
-                <div class="pos-email-wrap">
-                  <input id="cust-email" v-model="customerEmail" type="email" autocomplete="email" @blur="lookupCustomer" />
-                  <McSpinner v-if="customerLoading" class="pos-email-spinner" />
-                </div>
-                <small v-if="customerMatch" class="pos-email-match">Existing customer loaded</small>
-              </McField>
-              <McField label="Customer type" for-id="cust-type">
-                <input id="cust-type" v-model="customerType" placeholder="e.g. ENT" />
-              </McField>
-              <div class="pos-checkout__inline">
-                <McCheckbox v-model="sendEmail" label="Email invoice link" />
-                <button type="button" class="btn-link-toggle" @click="showBusinessFields = !showBusinessFields">
-                  <component :is="showBusinessFields ? ChevronDown : ChevronRight" :size="14" />
-                  {{ showBusinessFields ? 'Hide' : 'Add' }} business details
-                </button>
-              </div>
-              <div v-if="showBusinessFields" class="pos-checkout__business">
-                <McField label="Company name" for-id="cust-company">
-                  <input id="cust-company" v-model="customerCompany" type="text" placeholder="Business name" />
-                </McField>
-                <McField label="VAT number" for-id="cust-vat">
-                  <input id="cust-vat" v-model="customerVatNumber" type="text" placeholder="e.g. 4123456789" />
-                </McField>
-                <McField label="Business address" for-id="cust-addr">
-                  <textarea id="cust-addr" v-model="customerAddress" rows="2" placeholder="Street, City, Postal code" />
-                </McField>
-              </div>
-            </div>
-
-            <!-- Manager: order discount -->
-            <div v-if="isManager" class="pos-checkout__group">
-              <McField label="Order discount (R)" for-id="order-disc">
-                <input id="order-disc" v-model.number="discountTotal" type="number" step="0.01" min="0" />
-              </McField>
-            </div>
-
-            <!-- Totals -->
-            <div class="pos-totals" :class="{ 'pos-totals--pulse': totalPulse }">
-              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>Retail value</span>
-                <span>{{ formatZAR(cartGross) }}</span>
-              </div>
-              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>Discount given</span>
-                <strong>− {{ formatZAR(cartLineDiscounts) }}</strong>
-              </div>
-              <div class="pos-totals__row">
-                <span>Subtotal</span>
-                <strong>{{ formatZAR(subTotal) }}</strong>
-              </div>
-              <div v-if="isManager && discountTotal > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>Order discount</span>
-                <strong>− {{ formatZAR(discountTotal) }}</strong>
-              </div>
-              <div v-if="grandPreview > 0" class="pos-totals__row pos-totals__row--muted">
-                <span>Incl. VAT (15%)</span>
-                <span>{{ formatZAR(vatAmount) }}</span>
-              </div>
-              <div class="pos-totals__grand">
-                <span>Total due</span>
-                <strong>{{ formatZAR(grandPreview) }}</strong>
               </div>
             </div>
 
@@ -1129,6 +1069,89 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
               <p v-if="paymentMethod === 'Account' && willExceedCreditLimit && selectedAccount" class="pos-checkout__credit-warn">
                 Charging this sale puts the customer at {{ formatZAR(projectedBalance) }}, over their {{ formatZAR(selectedAccount.creditLimit) }} credit limit. You'll be asked to confirm.
               </p>
+            </div>
+
+            <!-- Manager: order discount -->
+            <div v-if="isManager" class="pos-checkout__group">
+              <McField label="Order discount (R)" for-id="order-disc">
+                <input id="order-disc" v-model.number="discountTotal" type="number" step="0.01" min="0" />
+              </McField>
+            </div>
+
+            <!-- Walk-in / receipt fields — collapsed by default -->
+            <div class="pos-checkout__group">
+              <button
+                type="button"
+                class="btn-link-toggle pos-customer-toggle"
+                :aria-expanded="showCustomerFields"
+                @click="showCustomerFields = !showCustomerFields"
+              >
+                <component :is="showCustomerFields ? ChevronDown : ChevronRight" :size="14" />
+                {{ showCustomerFields ? 'Hide customer details' : (walkInCustomerSummary ? 'Customer details' : 'Add customer details') }}
+              </button>
+              <p v-if="!showCustomerFields && walkInCustomerSummary" class="pos-customer-summary">{{ walkInCustomerSummary }}</p>
+              <template v-if="showCustomerFields">
+                <McField label="Customer name" for-id="cust-name">
+                  <input id="cust-name" v-model="customerName" type="text" autocomplete="name" />
+                </McField>
+                <McField label="Email (receipt)" for-id="cust-email">
+                  <div class="pos-email-wrap">
+                    <input id="cust-email" v-model="customerEmail" type="email" autocomplete="email" @blur="lookupCustomer" />
+                    <McSpinner v-if="customerLoading" class="pos-email-spinner" />
+                  </div>
+                  <small v-if="customerMatch" class="pos-email-match">Existing customer loaded</small>
+                </McField>
+                <McField label="Customer type" for-id="cust-type">
+                  <input id="cust-type" v-model="customerType" placeholder="e.g. ENT" />
+                </McField>
+                <div class="pos-checkout__inline">
+                  <McCheckbox v-model="sendEmail" label="Email invoice link" />
+                  <button type="button" class="btn-link-toggle" @click="showBusinessFields = !showBusinessFields">
+                    <component :is="showBusinessFields ? ChevronDown : ChevronRight" :size="14" />
+                    {{ showBusinessFields ? 'Hide' : 'Add' }} business details
+                  </button>
+                </div>
+                <div v-if="showBusinessFields" class="pos-checkout__business">
+                  <McField label="Company name" for-id="cust-company">
+                    <input id="cust-company" v-model="customerCompany" type="text" placeholder="Business name" />
+                  </McField>
+                  <McField label="VAT number" for-id="cust-vat">
+                    <input id="cust-vat" v-model="customerVatNumber" type="text" placeholder="e.g. 4123456789" />
+                  </McField>
+                  <McField label="Business address" for-id="cust-addr">
+                    <textarea id="cust-addr" v-model="customerAddress" rows="2" placeholder="Street, City, Postal code" />
+                  </McField>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div class="pos-checkout__footer">
+            <div class="pos-totals" :class="{ 'pos-totals--pulse': totalPulse }">
+              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Retail value</span>
+                <span>{{ formatZAR(cartGross) }}</span>
+              </div>
+              <div v-if="cartLineDiscounts > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Discount given</span>
+                <strong>− {{ formatZAR(cartLineDiscounts) }}</strong>
+              </div>
+              <div class="pos-totals__row">
+                <span>Subtotal</span>
+                <strong>{{ formatZAR(subTotal) }}</strong>
+              </div>
+              <div v-if="isManager && discountTotal > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Order discount</span>
+                <strong>− {{ formatZAR(discountTotal) }}</strong>
+              </div>
+              <div v-if="grandPreview > 0" class="pos-totals__row pos-totals__row--muted">
+                <span>Incl. VAT (15%)</span>
+                <span>{{ formatZAR(vatAmount) }}</span>
+              </div>
+              <div class="pos-totals__grand">
+                <span>Total due</span>
+                <strong>{{ formatZAR(grandPreview) }}</strong>
+              </div>
             </div>
 
             <McAlert v-if="belowCostWarning" variant="warning" class="pos-checkout__warn">{{ belowCostWarning }}</McAlert>
@@ -1447,12 +1470,40 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 }
 .pos-workspace__left {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.pos-workspace__left > .pos-panel,
+.pos-workspace__left > .pos-results-aside {
+  margin-bottom: 0;
 }
 .pos-workspace__right {
   min-width: 0;
 }
 .pos-results-aside {
-  margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+/* While searching: keep cart in view — cap results height; side-by-side on wide left column */
+.pos-workspace__left--searching .pos-panel__body--results {
+  max-height: min(38vh, 320px);
+  overflow-y: auto;
+}
+@media (min-width: 900px) {
+  .pos-workspace__left--searching {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+  .pos-workspace__left--searching .pos-panel__body--results {
+    max-height: min(48vh, 420px);
+  }
+  .pos-workspace__left--searching .pos-panel--cart {
+    position: sticky;
+    top: 4.25rem;
+  }
 }
 
 @media (min-width: 1100px) {
@@ -1472,7 +1523,9 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
     top: 4.25rem;
     align-self: start;
     max-height: calc(100vh - 5rem);
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   .pos-workspace__recent {
     grid-column: 1;
@@ -1527,6 +1580,16 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 }
 .pos-panel--cart {
   min-height: 180px;
+}
+.pos-panel--results {
+  margin-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.pos-panel--results .pos-panel__body--results {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Results card grid ────────────────────────────────────────────────── */
@@ -1753,6 +1816,14 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+@media (min-width: 1100px) {
+  .pos-checkout {
+    max-height: calc(100vh - 5rem);
+  }
 }
 .pos-checkout__head {
   padding: 0.6rem 1rem;
@@ -1763,12 +1834,25 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
   color: var(--mc-app-text-muted, #5c5a56);
   border-bottom: 1px solid var(--mc-app-border-faint, #eceae5);
   background: var(--mc-app-surface-2, #faf9f6);
+  flex-shrink: 0;
 }
-.pos-checkout__body {
-  padding: 0.85rem 1rem 1rem;
+.pos-checkout__scroll {
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.pos-checkout__footer {
+  flex-shrink: 0;
+  padding: 0.85rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border-top: 1px solid var(--mc-app-border-faint, #eceae5);
+  background: var(--mc-app-surface, #fff);
 }
 .pos-checkout__group {
   display: flex;
@@ -1778,6 +1862,15 @@ const searchNoHits = computed(() => !searchLoading.value && q.value.trim() && !r
 .pos-checkout__group + .pos-checkout__group {
   border-top: 1px solid var(--mc-app-border-faint, #eceae5);
   padding-top: 0.85rem;
+}
+.pos-customer-toggle {
+  align-self: flex-start;
+}
+.pos-customer-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--mc-app-text-secondary, #333336);
+  line-height: 1.35;
 }
 .pos-checkout__label {
   font-size: 0.7rem;
