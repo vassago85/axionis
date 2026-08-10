@@ -14,6 +14,11 @@ namespace AxionisPos.Api.Controllers;
 [Authorize(Roles = $"{Roles.Sales},{Roles.Admin},{Roles.Owner},{Roles.Dev}")]
 public class InvoicesController : ControllerBase
 {
+    private const string LikeEscape = "\\";
+
+    /// Extra rows fetched so the exact in-memory date filter still has a full page to return.
+    private const int DateTrimBuffer = 200;
+
     private readonly InvoiceService _invoices;
     private readonly AxionisDbContext _db;
     private readonly InvoicePdfService _pdf;
@@ -80,24 +85,43 @@ public class InvoicesController : ControllerBase
         if (term.Length < 2)
             return BadRequest(new { error = "Enter at least 2 characters to search." });
 
-        var like = $"%{term}%";
+        // Treat the term as literal text: '%' and '_' are LIKE wildcards, and a bare '%'
+        // would otherwise scan every line on the database.
+        var like = $"%{term.Replace(LikeEscape, LikeEscape + LikeEscape).Replace("%", LikeEscape + "%").Replace("_", LikeEscape + "_")}%";
 
-        var rows = await (
+        var limit = Math.Clamp(take, 1, 500);
+
+        // SQLite stores DateTimeOffset as text, so comparisons are only reliable when every
+        // row shares the same offset. Widen the SQL bounds by a day and re-filter exactly in
+        // memory: SQL never drops a row it should keep, and the result set stays bounded.
+        var fromBound = from?.AddDays(-1);
+        var toBound = to?.AddDays(1);
+
+        var query =
             from line in _db.InvoiceLines.AsNoTracking()
             join inv in _db.Invoices.AsNoTracking() on line.InvoiceId equals inv.Id
             from prod in _db.Products.AsNoTracking().Where(p => p.Id == line.ProductId).DefaultIfEmpty()
-            where EF.Functions.Like(line.Description, like)
-               || (line.SkuAtSale != null && EF.Functions.Like(line.SkuAtSale, like))
-               || EF.Functions.Like(inv.InvoiceNumber, like)
-               || (inv.CustomerName != null && EF.Functions.Like(inv.CustomerName, like))
-               || (prod != null && EF.Functions.Like(prod.Sku, like))
-               || (prod != null && prod.Barcode != null && EF.Functions.Like(prod.Barcode, like))
-            select new { Line = line, Inv = inv, CatalogSku = prod == null ? null : prod.Sku }
-        ).ToListAsync(ct);
+            where EF.Functions.Like(line.Description, like, LikeEscape)
+               || (line.SkuAtSale != null && EF.Functions.Like(line.SkuAtSale, like, LikeEscape))
+               || EF.Functions.Like(inv.InvoiceNumber, like, LikeEscape)
+               || (inv.CustomerName != null && EF.Functions.Like(inv.CustomerName, like, LikeEscape))
+               || (prod != null && EF.Functions.Like(prod.Sku, like, LikeEscape))
+               || (prod != null && prod.Barcode != null && EF.Functions.Like(prod.Barcode, like, LikeEscape))
+            select new { Line = line, Inv = inv, CatalogSku = prod == null ? null : prod.Sku };
+
+        if (!includeVoided)
+            query = query.Where(r => r.Inv.Status != InvoiceStatus.Voided);
+        if (fromBound.HasValue)
+            query = query.Where(r => r.Inv.CreatedAt >= fromBound.Value);
+        if (toBound.HasValue)
+            query = query.Where(r => r.Inv.CreatedAt <= toBound.Value);
+
+        var rows = await query
+            .OrderByDescending(r => r.Inv.CreatedAt)
+            .Take(limit + DateTrimBuffer)
+            .ToListAsync(ct);
 
         var filtered = rows.AsEnumerable();
-        if (!includeVoided)
-            filtered = filtered.Where(r => r.Inv.Status != InvoiceStatus.Voided);
         if (from.HasValue)
             filtered = filtered.Where(r => r.Inv.CreatedAt >= from.Value);
         if (to.HasValue)
@@ -105,7 +129,7 @@ public class InvoicesController : ControllerBase
 
         return filtered
             .OrderByDescending(r => r.Inv.CreatedAt)
-            .Take(Math.Clamp(take, 1, 500))
+            .Take(limit)
             .Select(r => new InvoiceLineSearchResultDto
             {
                 InvoiceId = r.Inv.Id,

@@ -32,6 +32,14 @@ const isStandalone = ref(
 
 const canGoBack = computed(() => window.history.length > 1)
 
+/** Highest role held, which is the one that decides what the operator can do. */
+const roleLabel = computed(() => {
+  for (const r of ['Dev', 'Owner', 'Admin', 'Sales']) {
+    if (auth.roles.includes(r)) return r
+  }
+  return null
+})
+
 watch(
   () => route.fullPath,
   () => {
@@ -103,6 +111,11 @@ function logout() {
         </div>
       </nav>
       <div class="ax-sidebar__foot">
+        <!-- Till tablets are shared, so who is signed in matters before you log out. -->
+        <p v-if="auth.email" class="ax-sidebar__who">
+          <span class="ax-sidebar__who-email">{{ auth.email }}</span>
+          <span v-if="roleLabel" class="ax-sidebar__who-role">{{ roleLabel }}</span>
+        </p>
         <button type="button" class="ax-sidebar__logout" @click="logout"><LogOut :size="16" />Log out</button>
       </div>
     </aside>
@@ -124,6 +137,7 @@ function logout() {
           @click="goForward"
         ><ChevronRight :size="20" /></button>
         <span class="brand-wordmark" style="font-size: 0.95rem; color: #2a2a2d">{{ businessName }}</span>
+        <span v-if="roleLabel" class="ax-topbar__role">{{ roleLabel }}</span>
       </header>
       <div class="ax-main__inner">
         <slot />

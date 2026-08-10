@@ -510,6 +510,32 @@ body.ax-body-app .ax-main tbody tr:hover {
   border-top: 1px solid #1e293b;
 }
 
+.ax-sidebar__who {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  min-width: 0;
+}
+
+.ax-sidebar__who-email {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-sidebar__who-role {
+  flex-shrink: 0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ax-accent, #2563eb);
+}
+
 .ax-sidebar__logout {
   display: inline-flex;
   align-items: center;
@@ -562,6 +588,20 @@ body.ax-body-app .ax-main tbody tr:hover {
   background: var(--ax-app-surface, #fff);
   border-bottom: 1px solid var(--ax-app-border-soft, #cbd5e1);
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  /* .ax-main is the scroll container, so this pins the menu while a long
+     page (the till, the stock list) scrolls underneath it. */
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+
+.ax-topbar__role {
+  margin-left: auto;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ax-app-text-muted, #64748b);
 }
 
 .ax-topbar__menu {
