@@ -19,8 +19,8 @@ public class BusinessSettingsController : ControllerBase
     private readonly AppOptions _app;
     private readonly IWebHostEnvironment _env;
 
-    private static readonly string[] AllowedLogoExt = [".png", ".jpg", ".jpeg", ".webp", ".svg"];
-    private static readonly string[] AllowedIconExt = [".png", ".ico", ".svg"];
+    private static readonly string[] AllowedLogoExt = BrandingImageRules.LogoExtensions;
+    private static readonly string[] AllowedIconExt = BrandingImageRules.FaviconExtensions;
 
     public BusinessSettingsController(
         AxionisDbContext db,
@@ -120,7 +120,9 @@ public class BusinessSettingsController : ControllerBase
     {
         var eff = await _effective.GetAsync(ct);
         var name = string.IsNullOrWhiteSpace(eff.BusinessName) ? "POS" : eff.BusinessName;
-        var icon = eff.LogoStorageKey != null ? "/api/settings/branding/logo" : "/favicon.svg";
+        var icon = BrandingImageRules.IsPublicRaster(eff.LogoStorageKey)
+            ? "/api/settings/branding/logo"
+            : "/favicon.svg";
         var themeColor = !string.IsNullOrWhiteSpace(eff.AccentColor)
             ? eff.AccentColor
             : (!string.IsNullOrWhiteSpace(eff.PrimaryColor) ? eff.PrimaryColor : "#0a0a0b");
@@ -153,8 +155,8 @@ public class BusinessSettingsController : ControllerBase
         return new PublicBrandingDto
         {
             BusinessName = eff.BusinessName,
-            LogoUrl = eff.LogoStorageKey != null ? "/api/settings/branding/logo" : null,
-            FaviconUrl = eff.FaviconStorageKey != null ? "/api/settings/branding/favicon" : null,
+            LogoUrl = BrandingImageRules.IsPublicRaster(eff.LogoStorageKey) ? "/api/settings/branding/logo" : null,
+            FaviconUrl = BrandingImageRules.IsPublicRaster(eff.FaviconStorageKey) ? "/api/settings/branding/favicon" : null,
             PrimaryColor = eff.PrimaryColor,
             SecondaryColor = eff.SecondaryColor,
             AccentColor = eff.AccentColor,
@@ -235,7 +237,7 @@ public class BusinessSettingsController : ControllerBase
     {
         var eff = await _effective.GetAsync(ct);
         var key = isLogo ? eff.LogoStorageKey : eff.FaviconStorageKey;
-        if (string.IsNullOrWhiteSpace(key))
+        if (key == null || !BrandingImageRules.IsPublicRaster(key))
             return NotFound();
 
         var path = Path.Combine(BrandingDir(), key);
@@ -260,7 +262,6 @@ public class BusinessSettingsController : ControllerBase
         ".png" => "image/png",
         ".jpg" or ".jpeg" => "image/jpeg",
         ".webp" => "image/webp",
-        ".svg" => "image/svg+xml",
         ".ico" => "image/x-icon",
         _ => "application/octet-stream",
     };
@@ -285,8 +286,8 @@ public class BusinessSettingsController : ControllerBase
         Address = row.Address,
         Website = row.Website,
         WebsiteLabel = row.WebsiteLabel,
-        LogoUrl = row.LogoStorageKey != null ? "/api/settings/branding/logo" : null,
-        FaviconUrl = row.FaviconStorageKey != null ? "/api/settings/branding/favicon" : null,
+        LogoUrl = BrandingImageRules.IsPublicRaster(row.LogoStorageKey) ? "/api/settings/branding/logo" : null,
+        FaviconUrl = BrandingImageRules.IsPublicRaster(row.FaviconStorageKey) ? "/api/settings/branding/favicon" : null,
         PrimaryColor = row.PrimaryColor,
         SecondaryColor = row.SecondaryColor,
         AccentColor = row.AccentColor,

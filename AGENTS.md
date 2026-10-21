@@ -44,3 +44,6 @@ WEB_PORT=8080
 - All API calls go through `/api/` prefix, proxied by nginx to the api container
 - Role hierarchy: Dev > Owner > Admin > Sales
 - Currency: ZAR (South African Rand)
+- New screens use `McAlert`, `McEmptyState`, and `McSpinner` or `McSkeleton`, plus a narrow breakpoint (`max-width` around 640–900px) like the existing views
+- API bugfixes start from a failing test in `tests/AxionisPos.Api.Tests` before the fix
+- Auth, upload, and public-token changes name the stranger failure and the check that stops it (role, validation, query binding, file visibility, or token lookup)

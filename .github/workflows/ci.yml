@@ -38,7 +38,7 @@ jobs:
         run: npm run build
 
   api:
-    name: API — restore & build
+    name: API — build & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,3 +52,6 @@ jobs:
 
       - name: Build (Release)
         run: dotnet build src/AxionisPos.Api/AxionisPos.Api.csproj --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/AxionisPos.Api.Tests/AxionisPos.Api.Tests.csproj --nologo --verbosity minimal
